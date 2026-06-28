@@ -23,9 +23,13 @@ public class GameManager : MonoBehaviour
     public int maxMovesPerPlayer = 30;  // FixedMoves: 각자 둘 수 있는 수
     public int targetScore = 5;         // TargetScore: 목표 점수
 
+    [Header("AI 설정")]
+    public float aiThinkDelay = 0.4f;   // AI가 두기 전 잠깐 멈추는 시간(초)
+
     private BoardState _board;
     private IPlayerAgent _blackPlayer;
     private IPlayerAgent _whitePlayer;
+    private IPlayerAgent _current;      // 지금 차례인 에이전트(Tick 대상)
     private CellState _currentColor;
     private bool _gameOver;
 
@@ -33,12 +37,17 @@ public class GameManager : MonoBehaviour
     {
         _board = new BoardState(boardView.boardSize); // 보드 크기는 BoardView 기준
 
-        // 지금은 사람 vs 사람(핫시트).
-        // 6단계에서 아래 _whitePlayer 한 줄만 new AIPlayer(...) 로 바꾸면 AI 대전이 된다.
+        // 흑 = 사람, 백 = AI. (온라인 단계에서 한쪽을 NetworkPlayer로 바꾸면 됨)
         _blackPlayer = new HumanPlayer(boardView);
-        _whitePlayer = new HumanPlayer(boardView);
+        _whitePlayer = new AIPlayer(aiThinkDelay);
 
         StartGame();
+    }
+
+    void Update()
+    {
+        // 현재 차례 에이전트에게만 시간을 흘려보낸다(AI 생각 딜레이 처리).
+        if (!_gameOver) _current?.Tick(Time.deltaTime);
     }
 
     public void StartGame()
@@ -47,18 +56,18 @@ public class GameManager : MonoBehaviour
         boardView.ClearAll();
         _gameOver = false;
         _currentColor = CellState.Black;
-        Debug.Log("게임 시작! 흑부터.");
+        Debug.Log("게임 시작! 흑(사람)부터.");
         BeginTurn();
     }
 
     private void BeginTurn()
     {
         if (_gameOver) return;
-        var agent = (_currentColor == CellState.Black) ? _blackPlayer : _whitePlayer;
-        agent.RequestMove(_board, _currentColor, OnMoveChosen);
+        _current = (_currentColor == CellState.Black) ? _blackPlayer : _whitePlayer;
+        _current.RequestMove(_board, _currentColor, OnMoveChosen);
     }
 
-    // 현재 플레이어가 수를 확정하면 호출된다(사람=클릭, 나중엔 AI=계산 결과).
+    // 현재 플레이어가 수를 확정하면 호출된다(사람=클릭, AI=계산 결과).
     private void OnMoveChosen(int col, int row)
     {
         var result = _board.PlaceStone(col, row, _currentColor);
@@ -81,7 +90,6 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        // 턴 넘기기
         _currentColor = (_currentColor == CellState.Black) ? CellState.White : CellState.Black;
         BeginTurn();
     }
@@ -98,7 +106,7 @@ public class GameManager : MonoBehaviour
             case EndCondition.TargetScore:
                 return _board.BlackScore >= targetScore || _board.WhiteScore >= targetScore;
             case EndCondition.BoardFull:
-                return false; // 위 IsBoardFull 에서 이미 처리
+                return false; // 위 IsBoardFull 에서 처리
         }
         return false;
     }
