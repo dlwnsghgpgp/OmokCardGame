@@ -3,13 +3,10 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// 보드의 "겉모습과 입력"만 담당하는 컴포넌트.
-/// - 마우스 클릭을 격자 좌표(col,row)로 변환해 CellClicked 이벤트로 알린다.
-/// - 외부(GameManager)가 요청하면 해당 좌표에 돌 프리팹을 놓는다.
-/// 돌을 둬도 되는지/누구 차례인지/점수는 전혀 모른다. 그건 GameManager의 일.
-///
-/// 이 스크립트는 1단계에서 만든 Board 오브젝트(원점 0,0,0)에 붙인다.
-/// transform.position 을 격자의 원점으로 사용하므로 BoardGizmo 와 좌표가 일치한다.
+/// 보드의 "겉모습과 입력"만 담당. 클릭을 격자 좌표로 바꿔 CellClicked 로 알리고,
+/// 요청받은 좌표에 돌을 놓는다. 추가로, 마우스가 가리키는 칸에 미리보기 돌을 띄운다.
+/// 둘 수 있으면 노랑, 없으면 빨강 — 가능 여부는 CanPlace(보드 규칙)에게 물어본다.
+/// 이 스크립트는 Board 오브젝트(원점 0,0,0)에 붙인다.
 /// </summary>
 public class BoardView : MonoBehaviour
 {
@@ -17,39 +14,93 @@ public class BoardView : MonoBehaviour
     public GameObject stoneBlackPrefab;
     public GameObject stoneWhitePrefab;
 
+    [Header("미리보기")]
+    public GameObject previewPrefab;                       // 반투명 돌(콜라이더 없음)
+    public Color playableColor = new Color(1f, 1f, 0f, 0.6f); // 노랑(가능)
+    public Color blockedColor  = new Color(1f, 0f, 0f, 0.6f); // 빨강(불가)
+
     [Header("격자 설정 (1단계와 동일하게)")]
     public int boardSize = 15;
     public float spacing = 1f;
-    public float stoneY = 0.3f;   // 보드 윗면 위로 돌이 살짝 떠 보이게 하는 높이
+    public float stoneY = 0.3f;
 
     /// <summary>플레이어가 격자 교차점을 클릭했을 때 발생. 인자는 (col, row).</summary>
     public event Action<int, int> CellClicked;
 
-    private GameObject[,] _stones;   // 놓인 돌 오브젝트 추적(재시작 시 정리용)
+    /// <summary>
+    /// "이 칸에 둘 수 있는가?"를 외부(GameManager)가 알려주는 판정 함수.
+    /// 보통 GameManager가 board.IsPlayable 을 꽂아준다.
+    /// 안 꽂혀 있으면 화면상 돌이 없는 칸을 가능으로 본다(단독 실행 대비).
+    /// </summary>
+    public Func<int, int, bool> CanPlace;
+
+    private GameObject[,] _stones;
     private Camera _cam;
 
-    private float Half => (boardSize - 1) / 2f;   // 15면 7
+    private GameObject _preview;
+    private Renderer _previewRenderer;
+
+    private float Half => (boardSize - 1) / 2f;
 
     void Awake()
     {
         _stones = new GameObject[boardSize, boardSize];
         _cam = Camera.main;
+
+        if (previewPrefab != null)
+        {
+            _preview = Instantiate(previewPrefab, transform);
+            _previewRenderer = _preview.GetComponentInChildren<Renderer>();
+            _preview.SetActive(false);
+        }
     }
 
     void Update()
     {
+        UpdateHover();   // 매 프레임 미리보기 갱신
+
         if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
             TryClick();
+    }
+
+    // 마우스가 가리키는 격자에 미리보기 돌을 띄우고 색을 정한다.
+    private void UpdateHover()
+    {
+        if (_preview == null) return;
+        if (_cam == null) _cam = Camera.main;
+        if (Mouse.current == null) return;
+
+        Ray ray = _cam.ScreenPointToRay(Mouse.current.position.ReadValue());
+        if (Physics.Raycast(ray, out RaycastHit hit, 1000f) &&
+            WorldToGrid(hit.point, out int col, out int row))
+        {
+            _preview.transform.position = GridToWorld(col, row);
+            if (!_preview.activeSelf) _preview.SetActive(true);
+
+            bool ok = (CanPlace != null) ? CanPlace(col, row) : (_stones[col, row] == null);
+            SetPreviewColor(ok ? playableColor : blockedColor);
+        }
+        else
+        {
+            if (_preview.activeSelf) _preview.SetActive(false); // 보드 밖이면 숨김
+        }
+    }
+
+    private void SetPreviewColor(Color c)
+    {
+        if (_previewRenderer == null) return;
+        // .material 접근 시 인스턴스가 생기므로 공유 에셋은 건드리지 않는다.
+        var mat = _previewRenderer.material;
+        mat.color = c;                                       // 내장 셰이더용 메인 컬러
+        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", c); // URP Lit 대비
     }
 
     private void TryClick()
     {
         if (_cam == null) _cam = Camera.main;
 
-        Vector2 mousePos = Mouse.current.position.ReadValue();
-        Ray ray = _cam.ScreenPointToRay(mousePos);
-        if (!Physics.Raycast(ray, out RaycastHit hit, 1000f))
-            return;
+        Ray ray = _cam.ScreenPointToRay(Mouse.current.position.ReadValue());
+        if (!Physics.Raycast(ray, out RaycastHit hit, 1000f)) return;
 
         if (WorldToGrid(hit.point, out int col, out int row))
             CellClicked?.Invoke(col, row);
@@ -75,7 +126,7 @@ public class BoardView : MonoBehaviour
     public void PlaceStoneVisual(int col, int row, CellState color)
     {
         if (col < 0 || col >= boardSize || row < 0 || row >= boardSize) return;
-        if (_stones[col, row] != null) return;          // 이미 시각적으로 놓여 있음
+        if (_stones[col, row] != null) return;
         if (color == CellState.Empty) return;
 
         GameObject prefab = (color == CellState.Black) ? stoneBlackPrefab : stoneWhitePrefab;

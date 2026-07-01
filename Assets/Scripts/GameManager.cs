@@ -43,6 +43,9 @@ public class GameManager : MonoBehaviour
     {
         _board = new BoardState(boardView.boardSize);
 
+        // 미리보기와 착수가 같은 규칙을 쓰도록, 보드의 IsPlayable 을 View에 연결.
+        boardView.CanPlace = _board.IsPlayable;
+
         _blackPlayer = new HumanPlayer(boardView);
         _whitePlayer = new AIPlayer(aiThinkDelay);
 

@@ -59,6 +59,12 @@ public class BoardState
     public bool IsEmpty(int col, int row) =>
         InBounds(col, row) && _cells[col, row] == CellState.Empty;
 
+    /// <summary>
+    /// 그 칸에 돌을 둘 수 있는지 — 미리보기와 실제 착수가 공유하는 단일 규칙.
+    /// 지금은 "보드 안의 빈 칸"이면 가능. 벽·함정 카드가 생기면 여기에만 조건을 더한다.
+    /// </summary>
+    public bool IsPlayable(int col, int row) => IsEmpty(col, row);
+
     public bool IsBoardFull => StoneCount >= Size * Size;
 
     /// <summary>(col,row)에 color 돌을 놓는다. 새로 완성된 5목 개수만큼 점수를 더한다.</summary>
@@ -68,8 +74,8 @@ public class BoardState
             return PlaceResult.Fail("빈 색은 놓을 수 없습니다.");
         if (!InBounds(col, row))
             return PlaceResult.Fail("보드 범위를 벗어났습니다.");
-        if (_cells[col, row] != CellState.Empty)
-            return PlaceResult.Fail("이미 돌이 있는 자리입니다.");
+        if (!IsPlayable(col, row))
+            return PlaceResult.Fail("둘 수 없는 자리입니다.");
 
         _cells[col, row] = color;
         StoneCount++;
