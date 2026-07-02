@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>게임을 끝내는 방식. 새 조건을 추가하기 쉽게 한 곳에 모았다.</summary>
@@ -10,9 +11,9 @@ public enum EndCondition
 }
 
 /// <summary>
-/// 게임 진행을 총괄한다. BoardState(데이터)와 BoardView(화면)를 들고,
-/// 두 플레이어에게 번갈아 수를 요청하고, 결과를 적용하고, 종료를 판정한다.
+/// 게임 진행을 총괄한다. 데이터·화면·플레이어·덱·손패를 들고 턴을 굴린다.
 /// UI는 전혀 모른다 — 상태가 바뀌면 이벤트만 쏘고, GameUI가 그걸 듣는다.
+/// (8a-1) 매 턴 현재 플레이어가 공유 덱에서 한 장 뽑는다. 카드 "사용"은 8a-2에서.
 /// </summary>
 public class GameManager : MonoBehaviour
 {
@@ -21,30 +22,37 @@ public class GameManager : MonoBehaviour
 
     [Header("종료 조건")]
     public EndCondition endCondition = EndCondition.FixedMoves;
-    public int maxMovesPerPlayer = 30;  // FixedMoves: 각자 둘 수 있는 수
-    public int targetScore = 5;         // TargetScore: 목표 점수
+    public int maxMovesPerPlayer = 30;
+    public int targetScore = 5;
 
     [Header("AI 설정")]
-    public float aiThinkDelay = 0.4f;   // AI가 두기 전 잠깐 멈추는 시간(초)
+    public float aiThinkDelay = 0.4f;
 
-    // ── UI가 구독하는 이벤트들 (GameManager는 UI를 직접 알지 못한다) ──
-    public event Action<int, int> ScoreChanged;   // (흑 점수, 백 점수)
-    public event Action<CellState> TurnChanged;    // 지금 차례인 색
-    public event Action<string> GameOver;          // 결과 문구
+    [Header("카드")]
+    public List<CardData> deckCards = new List<CardData>(); // 덱 구성(같은 카드를 여러 번 넣어 빈도 조절)
+    public int maxHandSize = 7;
+
+    // ── UI가 구독하는 이벤트들 ──
+    public event Action<int, int> ScoreChanged;                     // (흑 점수, 백 점수)
+    public event Action<CellState> TurnChanged;                      // 지금 차례 색
+    public event Action<string> GameOver;                            // 결과 문구
+    public event Action<IReadOnlyList<CardData>> HumanHandChanged;   // 사람(흑) 손패 변경
 
     private BoardState _board;
     private IPlayerAgent _blackPlayer;
     private IPlayerAgent _whitePlayer;
-    private IPlayerAgent _current;      // 지금 차례 에이전트(Tick 대상)
+    private IPlayerAgent _current;
     private CellState _currentColor;
     private bool _gameOver;
+
+    private Deck _deck;
+    private Hand _blackHand;   // 사람
+    private Hand _whiteHand;   // AI
 
     void Start()
     {
         _board = new BoardState(boardView.boardSize);
-
-        // 미리보기와 착수가 같은 규칙을 쓰도록, 보드의 IsPlayable 을 View에 연결.
-        boardView.CanPlace = _board.IsPlayable;
+        boardView.CanPlace = _board.IsPlayable;   // 미리보기와 착수가 같은 규칙 공유
 
         _blackPlayer = new HumanPlayer(boardView);
         _whitePlayer = new AIPlayer(aiThinkDelay);
@@ -61,20 +69,45 @@ public class GameManager : MonoBehaviour
     {
         _board.Reset();
         boardView.ClearAll();
+
+        _deck = new Deck(deckCards);
+        _deck.Shuffle();
+        _blackHand = new Hand();
+        _whiteHand = new Hand();
+
         _gameOver = false;
         _currentColor = CellState.Black;
 
-        ScoreChanged?.Invoke(_board.BlackScore, _board.WhiteScore); // 0 : 0 으로 초기화
-        Debug.Log("게임 시작! 흑(사람)부터.");
+        ScoreChanged?.Invoke(_board.BlackScore, _board.WhiteScore);
+        HumanHandChanged?.Invoke(_blackHand.Cards);
+        Debug.Log($"게임 시작! 흑(사람)부터. 덱 {_deck.Count}장.");
         BeginTurn();
     }
 
     private void BeginTurn()
     {
         if (_gameOver) return;
+
+        DrawFor(_currentColor);   // 드로우 페이즈: 현재 플레이어가 한 장 뽑는다
         TurnChanged?.Invoke(_currentColor);
+
         _current = (_currentColor == CellState.Black) ? _blackPlayer : _whitePlayer;
         _current.RequestMove(_board, _currentColor, OnMoveChosen);
+    }
+
+    private void DrawFor(CellState color)
+    {
+        Hand hand = (color == CellState.Black) ? _blackHand : _whiteHand;
+        if (hand.Count >= maxHandSize) return;   // 손패가 꽉 차면 스킵
+
+        CardData card = _deck.Draw();
+        if (card == null) return;                // 덱 소진
+
+        hand.Add(card);
+        Debug.Log($"{color} 드로우: {card.cardName} (덱 {_deck.Count}장 남음)");
+
+        if (color == CellState.Black)
+            HumanHandChanged?.Invoke(_blackHand.Cards);
     }
 
     private void OnMoveChosen(int col, int row)
@@ -91,8 +124,7 @@ public class GameManager : MonoBehaviour
         ScoreChanged?.Invoke(_board.BlackScore, _board.WhiteScore);
 
         if (result.PointsScored > 0)
-            Debug.Log($"{_currentColor} +{result.PointsScored}점!  " +
-                      $"흑 {_board.BlackScore} : 백 {_board.WhiteScore}");
+            Debug.Log($"{_currentColor} +{result.PointsScored}점!  흑 {_board.BlackScore} : 백 {_board.WhiteScore}");
 
         if (CheckGameEnd())
         {
