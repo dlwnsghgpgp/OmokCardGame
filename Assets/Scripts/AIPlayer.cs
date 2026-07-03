@@ -21,7 +21,7 @@ public class AIPlayer : IPlayerAgent
     private readonly float _thinkDelay;
     private BoardState _board;
     private CellState _myColor;
-    private Action<int, int> _onChosen;
+    private Action<TurnAction> _onAction;
     private float _timer;
     private bool _thinking;
 
@@ -31,13 +31,14 @@ public class AIPlayer : IPlayerAgent
         _thinkDelay = thinkDelay;
     }
 
-    public void RequestMove(BoardState board, CellState myColor, Action<int, int> onChosen)
+    public void RequestAction(BoardState board, CellState myColor, Action<TurnAction> onAction)
     {
         _board = board;
         _myColor = myColor;
-        _onChosen = onChosen;
+        _onAction = onAction;
         _timer = 0f;
         _thinking = true; // 실제 결정은 Tick()에서 약간의 딜레이 뒤에
+        // (이번 단계 AI는 카드를 쓰지 않고 항상 돌만 둔다. 카드 사용은 8d에서.)
     }
 
     /// <summary>GameManager가 매 프레임 호출해 준다(생각하는 척 딜레이 처리).</summary>
@@ -48,16 +49,16 @@ public class AIPlayer : IPlayerAgent
         if (_timer < _thinkDelay) return;
 
         _thinking = false;
-        var callback = _onChosen;
+        var callback = _onAction;
         ChooseBestMove(out int col, out int row);
         Cancel();
-        callback?.Invoke(col, row);
+        callback?.Invoke(TurnAction.Place(col, row));
     }
 
     public void Cancel()
     {
         _thinking = false;
-        _onChosen = null;
+        _onAction = null;
     }
 
     private CellState Opponent => _myColor == CellState.Black ? CellState.White : CellState.Black;

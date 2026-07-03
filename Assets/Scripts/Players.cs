@@ -1,56 +1,74 @@
 using System;
 
+/// <summary>한 턴에 플레이어가 할 수 있는 행동의 종류.</summary>
+public enum TurnActionType { PlaceStone, PlayCard }
+
+/// <summary>플레이어가 고른 행동. 돌 두기(좌표) 또는 카드 쓰기(손패 인덱스).</summary>
+public struct TurnAction
+{
+    public TurnActionType Type;
+    public int Col, Row;      // PlaceStone
+    public int CardIndex;     // PlayCard
+
+    public static TurnAction Place(int col, int row) =>
+        new TurnAction { Type = TurnActionType.PlaceStone, Col = col, Row = row };
+
+    public static TurnAction Card(int handIndex) =>
+        new TurnAction { Type = TurnActionType.PlayCard, CardIndex = handIndex };
+}
+
 /// <summary>
-/// 한 명의 플레이어(사람/AI/네트워크)가 공통으로 가지는 역할.
-/// "자기 차례에 수를 하나 정한다"는 것만 정의한다.
-/// 이 추상화 덕분에 사람 자리를 AI로, 나중엔 네트워크로 갈아끼울 수 있다.
+/// 플레이어(사람/AI/네트워크) 공통 역할. "이번에 할 행동을 정한다".
+/// 돌을 두면 그 턴이 끝난다. 카드를 쓰면 GameManager가 처리 후 다시 행동을 요청한다.
 /// </summary>
 public interface IPlayerAgent
 {
-    // 자기 차례가 되면 GameManager가 호출. 수를 정하면 onChosen(col,row)을 정확히 한 번 호출한다.
-    void RequestMove(BoardState board, CellState myColor, Action<int, int> onChosen);
-
-    // 매 프레임 GameManager가 호출(AI의 생각 딜레이 등에 사용). 사람은 빈 구현.
+    void RequestAction(BoardState board, CellState myColor, Action<TurnAction> onAction);
     void Tick(float deltaTime);
-
-    // 진행 중인 입력/대기를 취소·정리한다(게임 종료·재시작 시).
     void Cancel();
 }
 
 /// <summary>
-/// 사람 플레이어. BoardView의 클릭 이벤트를 "자기 차례에만" 구독했다가,
-/// 빈 자리를 클릭하면 그 좌표를 수로 확정한다. 일반 C# 클래스.
+/// 사람 플레이어. 보드 클릭 → 돌 두기 행동. UI 카드 클릭 → GameManager가 SubmitCardChoice로 전달.
 /// </summary>
 public class HumanPlayer : IPlayerAgent
 {
     private readonly BoardView _view;
     private BoardState _board;
-    private Action<int, int> _onChosen;
+    private Action<TurnAction> _onAction;
 
     public HumanPlayer(BoardView view) { _view = view; }
 
-    public void RequestMove(BoardState board, CellState myColor, Action<int, int> onChosen)
+    public void RequestAction(BoardState board, CellState myColor, Action<TurnAction> onAction)
     {
         _board = board;
-        _onChosen = onChosen;
-        _view.CellClicked += HandleClick;   // 내 차례 동안만 클릭을 듣는다
+        _onAction = onAction;
+        _view.CellClicked += HandleBoardClick;
     }
 
-    public void Tick(float deltaTime) { /* 사람은 입력 이벤트로 처리하므로 할 일 없음 */ }
+    public void Tick(float deltaTime) { }
 
-    private void HandleClick(int col, int row)
+    /// <summary>UI에서 카드가 클릭됐을 때 GameManager가 호출. 지금 행동 대기 중이면 카드 행동을 낸다.</summary>
+    public void SubmitCardChoice(int handIndex)
     {
-        if (_board == null || !_board.IsEmpty(col, row)) return; // 빈 자리만
+        if (_onAction == null) return;   // 지금 이 사람 차례의 행동 대기 중이 아니면 무시
+        var cb = _onAction;
+        Cancel();
+        cb(TurnAction.Card(handIndex));
+    }
 
-        var callback = _onChosen;
-        Cancel();                   // 먼저 구독 해제(중복 입력 방지) 후
-        callback?.Invoke(col, row); // 수를 확정해 GameManager에 알린다
+    private void HandleBoardClick(int col, int row)
+    {
+        if (_board == null || !_board.IsPlayable(col, row)) return;   // 둘 수 있는 칸만
+        var cb = _onAction;
+        Cancel();
+        cb(TurnAction.Place(col, row));
     }
 
     public void Cancel()
     {
-        _view.CellClicked -= HandleClick;
-        _onChosen = null;
+        _view.CellClicked -= HandleBoardClick;
+        _onAction = null;
         _board = null;
     }
 }

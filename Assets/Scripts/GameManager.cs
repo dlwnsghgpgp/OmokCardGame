@@ -1,24 +1,21 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>게임을 끝내는 방식. 새 조건을 추가하기 쉽게 한 곳에 모았다.</summary>
-public enum EndCondition
-{
-    FixedMoves,   // 각자 정해진 수만큼 두면 종료 (우리가 정한 기본)
-    TargetScore,  // 누군가 목표 점수에 먼저 도달하면 종료
-    BoardFull,    // 판이 꽉 차면 종료
-}
+public enum EndCondition { FixedMoves, TargetScore, BoardFull }
 
 /// <summary>
-/// 게임 진행을 총괄한다. 데이터·화면·플레이어·덱·손패를 들고 턴을 굴린다.
-/// UI는 전혀 모른다 — 상태가 바뀌면 이벤트만 쏘고, GameUI가 그걸 듣는다.
-/// (8a-1) 매 턴 현재 플레이어가 공유 덱에서 한 장 뽑는다. 카드 "사용"은 8a-2에서.
+/// 게임 진행 총괄. 데이터·화면·플레이어·덱·손패를 들고 턴을 굴린다.
+/// (8a-2) 한 턴 = 드로우 → [행동 요청 루프: 카드 쓰기 or 돌 두기] → 돌을 두면 턴 종료.
+/// 카드 효과는 코루틴으로 실행하며, 그 안에서 타겟팅 클릭을 기다린다.
 /// </summary>
 public class GameManager : MonoBehaviour
 {
     [Header("참조")]
     public BoardView boardView;
+    public GameUI gameUI;
 
     [Header("종료 조건")]
     public EndCondition endCondition = EndCondition.FixedMoves;
@@ -29,14 +26,14 @@ public class GameManager : MonoBehaviour
     public float aiThinkDelay = 0.4f;
 
     [Header("카드")]
-    public List<CardData> deckCards = new List<CardData>(); // 덱 구성(같은 카드를 여러 번 넣어 빈도 조절)
+    public List<CardData> deckCards = new List<CardData>();
     public int maxHandSize = 7;
 
     // ── UI가 구독하는 이벤트들 ──
-    public event Action<int, int> ScoreChanged;                     // (흑 점수, 백 점수)
-    public event Action<CellState> TurnChanged;                      // 지금 차례 색
-    public event Action<string> GameOver;                            // 결과 문구
-    public event Action<IReadOnlyList<CardData>> HumanHandChanged;   // 사람(흑) 손패 변경
+    public event Action<int, int> ScoreChanged;
+    public event Action<CellState> TurnChanged;
+    public event Action<string> GameOver;
+    public event Action<IReadOnlyList<CardData>> HumanHandChanged;
 
     private BoardState _board;
     private IPlayerAgent _blackPlayer;
@@ -44,6 +41,7 @@ public class GameManager : MonoBehaviour
     private IPlayerAgent _current;
     private CellState _currentColor;
     private bool _gameOver;
+    private bool _cardPlayedThisTurn;
 
     private Deck _deck;
     private Hand _blackHand;   // 사람
@@ -52,12 +50,19 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         _board = new BoardState(boardView.boardSize);
-        boardView.CanPlace = _board.IsPlayable;   // 미리보기와 착수가 같은 규칙 공유
+        boardView.CanPlace = _board.IsPlayable;
 
         _blackPlayer = new HumanPlayer(boardView);
         _whitePlayer = new AIPlayer(aiThinkDelay);
 
+        if (gameUI != null) gameUI.CardClicked += OnHumanCardClicked;
+
         StartGame();
+    }
+
+    void OnDestroy()
+    {
+        if (gameUI != null) gameUI.CardClicked -= OnHumanCardClicked;
     }
 
     void Update()
@@ -84,39 +89,107 @@ public class GameManager : MonoBehaviour
         BeginTurn();
     }
 
+    private Hand CurrentHand() => (_currentColor == CellState.Black) ? _blackHand : _whiteHand;
+
     private void BeginTurn()
     {
         if (_gameOver) return;
 
-        DrawFor(_currentColor);   // 드로우 페이즈: 현재 플레이어가 한 장 뽑는다
+        DrawFor(_currentColor);
         TurnChanged?.Invoke(_currentColor);
+        _cardPlayedThisTurn = false;
 
         _current = (_currentColor == CellState.Black) ? _blackPlayer : _whitePlayer;
-        _current.RequestMove(_board, _currentColor, OnMoveChosen);
+        RequestActionFromCurrent();
+    }
+
+    private void RequestActionFromCurrent()
+    {
+        if (_gameOver) return;
+        _current.RequestAction(_board, _currentColor, OnActionChosen);
     }
 
     private void DrawFor(CellState color)
     {
         Hand hand = (color == CellState.Black) ? _blackHand : _whiteHand;
-        if (hand.Count >= maxHandSize) return;   // 손패가 꽉 차면 스킵
+        if (hand.Count >= maxHandSize) return;
 
         CardData card = _deck.Draw();
-        if (card == null) return;                // 덱 소진
+        if (card == null) return;
 
         hand.Add(card);
         Debug.Log($"{color} 드로우: {card.cardName} (덱 {_deck.Count}장 남음)");
-
-        if (color == CellState.Black)
-            HumanHandChanged?.Invoke(_blackHand.Cards);
+        if (color == CellState.Black) HumanHandChanged?.Invoke(_blackHand.Cards);
     }
 
-    private void OnMoveChosen(int col, int row)
+    // UI에서 사람이 손패 카드를 클릭 → 현재 에이전트가 사람이면 전달.
+    private void OnHumanCardClicked(int handIndex)
+    {
+        if (_current is HumanPlayer hp) hp.SubmitCardChoice(handIndex);
+    }
+
+    private void OnActionChosen(TurnAction action)
+    {
+        if (action.Type == TurnActionType.PlayCard)
+            HandlePlayCard(action.CardIndex);
+        else
+            PlaceStoneAction(action.Col, action.Row);
+    }
+
+    private void HandlePlayCard(int index)
+    {
+        Hand hand = CurrentHand();
+        CardData card = hand.Get(index);
+
+        if (card == null) { RequestActionFromCurrent(); return; }
+        if (_cardPlayedThisTurn)
+        {
+            Debug.Log("이번 턴엔 이미 카드를 사용했습니다.");
+            RequestActionFromCurrent();
+            return;
+        }
+
+        var checkCtx = new CardContext(_board, boardView, _currentColor);
+        if (!card.CanUse(checkCtx))
+        {
+            Debug.Log($"{card.cardName}: 아직 사용할 수 없습니다(8a-3에서 구현).");
+            RequestActionFromCurrent();
+            return;
+        }
+
+        StartCoroutine(ResolveCard(card, index));
+    }
+
+    private IEnumerator ResolveCard(CardData card, int index)
+    {
+        var ctx = new CardContext(_board, boardView, _currentColor);
+        yield return StartCoroutine(card.Execute(ctx));   // 타겟팅 등 대기 포함
+
+        if (!ctx.Cancelled)
+        {
+            CurrentHand().RemoveAt(index);
+            _cardPlayedThisTurn = true;
+            ScoreChanged?.Invoke(_board.BlackScore, _board.WhiteScore);
+            if (_currentColor == CellState.Black) HumanHandChanged?.Invoke(_blackHand.Cards);
+            Debug.Log($"카드 사용 완료: {card.cardName}");
+
+            if (CheckGameEnd()) { EndGame(); yield break; }
+        }
+        else
+        {
+            Debug.Log($"카드 취소: {card.cardName}");
+        }
+
+        RequestActionFromCurrent();   // 이어서 카드를 더 쓰거나(막힘) 돌을 둔다
+    }
+
+    private void PlaceStoneAction(int col, int row)
     {
         var result = _board.PlaceStone(col, row, _currentColor);
         if (!result.Success)
         {
-            Debug.LogWarning($"잘못된 수({result.Error}) — 다시 두세요.");
-            BeginTurn();
+            Debug.LogWarning($"잘못된 수({result.Error}) — 다시.");
+            RequestActionFromCurrent();
             return;
         }
 
@@ -126,11 +199,7 @@ public class GameManager : MonoBehaviour
         if (result.PointsScored > 0)
             Debug.Log($"{_currentColor} +{result.PointsScored}점!  흑 {_board.BlackScore} : 백 {_board.WhiteScore}");
 
-        if (CheckGameEnd())
-        {
-            EndGame();
-            return;
-        }
+        if (CheckGameEnd()) { EndGame(); return; }
 
         _currentColor = (_currentColor == CellState.Black) ? CellState.White : CellState.Black;
         BeginTurn();
@@ -139,7 +208,6 @@ public class GameManager : MonoBehaviour
     private bool CheckGameEnd()
     {
         if (_board.IsBoardFull) return true;
-
         switch (endCondition)
         {
             case EndCondition.FixedMoves:

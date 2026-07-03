@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 0}
   m_Name: ExtraStoneCard
   m_EditorClassIdentifier: Assembly-CSharp::ExtraStoneCardData
-  cardName: "\uB09C \uB354 \uB458\uB798!"
-  description: "\uC790\uC2E0\uC740 \uB3CC\uC744 \uD55C\uBC88 \uB354 \uB458 \uC218
-    \uC788\uC2B5\uB2C8\uB2E4."
+  cardName: "\uD55C\uBC88 \uB354 \uB458\uB798"
+  description: "\uB3CC\uC744 \uD55C \uBC88 \uB354 \uB458 \uC218 \uC788\uB2E4."
+  artFull: {fileID: 0}
+  artIcon: {fileID: 0}
