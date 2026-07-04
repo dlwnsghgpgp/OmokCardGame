@@ -6,8 +6,8 @@ using TMPro;
 
 /// <summary>
 /// 화면(UI) 담당. 점수·턴·게임오버·손패를 GameManager 이벤트로 갱신한다.
-/// (8a-2) 손패는 클릭 가능한 카드 버튼으로 표시. 클릭 시 CardClicked(인덱스)를 쏜다.
-/// 이미지·호버 툴팁은 8a-2b에서 이 버튼을 확장한다.
+/// (8a-2b) 손패는 CardView로 그리고, 카드 호버 시 화면을 어둡게 덮는 포커스 오버레이에
+/// 큰 이미지 + 이름 + 효과를 띄운다. 벗어나면 오버레이를 끈다.
 /// </summary>
 public class GameUI : MonoBehaviour
 {
@@ -20,7 +20,13 @@ public class GameUI : MonoBehaviour
 
     [Header("손패")]
     public Transform handContainer;      // Horizontal Layout Group을 단 빈 오브젝트
-    public GameObject cardButtonPrefab;  // Button + 자식 TMP_Text
+    public GameObject cardButtonPrefab;  // CardView가 붙은 카드 프리팹
+
+    [Header("카드 포커스(호버 시)")]
+    public GameObject cardFocusOverlay;  // 화면을 덮는 어두운 패널(루트)
+    public Image focusImage;             // 큰 카드 이미지
+    public TMP_Text focusName;           // 카드 이름
+    public TMP_Text focusDescription;    // 카드 효과 설명
 
     [Header("게임오버")]
     public GameObject gameOverPanel;
@@ -43,6 +49,8 @@ public class GameUI : MonoBehaviour
             restartButton.onClick.AddListener(OnRestartClicked);
         if (gameOverPanel != null)
             gameOverPanel.SetActive(false);
+        if (cardFocusOverlay != null)
+            cardFocusOverlay.SetActive(false);   // 처음엔 숨김
     }
 
     void OnDestroy()
@@ -71,26 +79,53 @@ public class GameUI : MonoBehaviour
 
     private void OnHumanHandChanged(IReadOnlyList<CardData> cards)
     {
+        HideCardFocus();   // 손패가 바뀌면 포커스는 닫아둔다(카드 소모 후 잔상 방지)
+
         if (handContainer == null || cardButtonPrefab == null) return;
 
-        // 기존 카드 버튼 제거
+        // 기존 카드 제거
         for (int i = handContainer.childCount - 1; i >= 0; i--)
             Destroy(handContainer.GetChild(i).gameObject);
 
-        // 손패 다시 그리기
+        // 손패 다시 그리기 — 각 카드에 CardView.Setup 으로 데이터 주입
         for (int i = 0; i < cards.Count; i++)
         {
-            int index = i;   // 클로저 캡처 주의: 반복 변수 대신 지역 복사본 사용
-            GameObject go = Instantiate(cardButtonPrefab);   // 먼저 씬에 복제한 뒤
-            go.transform.SetParent(handContainer, false);    // 그 다음 부모 지정(false=로컬 좌표 유지)
+            GameObject go = Instantiate(cardButtonPrefab);
+            go.transform.SetParent(handContainer, false);
 
-            var label = go.GetComponentInChildren<TMP_Text>();
-            if (label != null) label.text = cards[i].cardName;
-
-            var btn = go.GetComponent<Button>();
-            if (btn != null) btn.onClick.AddListener(() => CardClicked?.Invoke(index));
+            var view = go.GetComponent<CardView>();
+            if (view != null) view.Setup(cards[i], i, this);
         }
     }
+
+    // ── CardView가 호출하는 콜백 ──
+
+    public void ShowCardFocus(CardData card)
+    {
+        if (cardFocusOverlay == null || card == null) return;
+
+        if (focusImage != null)
+        {
+            // artFull 우선, 없으면 artIcon, 그것도 없으면 단색(빈 카드)로 표시
+            focusImage.sprite = card.artFull != null ? card.artFull : card.artIcon;
+        }
+        if (focusName != null) focusName.text = card.cardName;
+        if (focusDescription != null) focusDescription.text = card.description;
+
+        cardFocusOverlay.SetActive(true);
+    }
+
+    public void HideCardFocus()
+    {
+        if (cardFocusOverlay != null) cardFocusOverlay.SetActive(false);
+    }
+
+    public void OnCardViewClicked(int index)
+    {
+        CardClicked?.Invoke(index);
+    }
+
+    // ── 게임오버 ──
 
     private void OnGameOver(string result)
     {
