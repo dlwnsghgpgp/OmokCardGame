@@ -75,7 +75,7 @@ public class AIPlayer : IPlayerAgent
         for (int c = 0; c < size; c++)
         for (int r = 0; r < size; r++)
         {
-            if (!_board.IsEmpty(c, r)) continue;
+            if (!_board.IsPlayable(c, r)) continue;   // 빈 칸 + 막히지 않은 칸만 후보
 
             float offense = EvaluateFor(c, r, _myColor);
             float defense = EvaluateFor(c, r, Opponent);

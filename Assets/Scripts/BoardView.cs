@@ -18,6 +18,9 @@ public class BoardView : MonoBehaviour
     public Color playableColor = new Color(1f, 1f, 0f, 0.6f);
     public Color blockedColor  = new Color(1f, 0f, 0f, 0.6f);
 
+    [Header("막힌 칸 표시")]
+    public GameObject blockedMarkerPrefab;   // 막힌 칸에 놓을 표식(없으면 표시 생략)
+
     [Header("격자 설정 (1단계와 동일하게)")]
     public int boardSize = 15;
     public float spacing = 1f;
@@ -27,6 +30,7 @@ public class BoardView : MonoBehaviour
     public Func<int, int, bool> CanPlace;   // 평소 미리보기/착수 가능 판정(보통 board.IsPlayable)
 
     private GameObject[,] _stones;
+    private GameObject[,] _blockedMarkers;
     private Camera _cam;
 
     private GameObject _preview;
@@ -43,6 +47,7 @@ public class BoardView : MonoBehaviour
     void Awake()
     {
         _stones = new GameObject[boardSize, boardSize];
+        _blockedMarkers = new GameObject[boardSize, boardSize];
         _cam = Camera.main;
 
         if (previewPrefab != null)
@@ -186,6 +191,25 @@ public class BoardView : MonoBehaviour
         }
     }
 
+    public void MarkBlockedVisual(int col, int row)
+    {
+        if (col < 0 || col >= boardSize || row < 0 || row >= boardSize) return;
+        if (blockedMarkerPrefab == null) return;              // 프리팹 없으면 표시 생략
+        if (_blockedMarkers[col, row] != null) return;
+        _blockedMarkers[col, row] =
+            Instantiate(blockedMarkerPrefab, GridToWorld(col, row), Quaternion.identity, transform);
+    }
+
+    public void ClearBlockedVisual(int col, int row)
+    {
+        if (col < 0 || col >= boardSize || row < 0 || row >= boardSize) return;
+        if (_blockedMarkers[col, row] != null)
+        {
+            Destroy(_blockedMarkers[col, row]);
+            _blockedMarkers[col, row] = null;
+        }
+    }
+
     public void ClearAll()
     {
         for (int c = 0; c < boardSize; c++)
@@ -193,6 +217,8 @@ public class BoardView : MonoBehaviour
         {
             if (_stones[c, r] != null) Destroy(_stones[c, r]);
             _stones[c, r] = null;
+            if (_blockedMarkers[c, r] != null) Destroy(_blockedMarkers[c, r]);
+            _blockedMarkers[c, r] = null;
         }
     }
 }

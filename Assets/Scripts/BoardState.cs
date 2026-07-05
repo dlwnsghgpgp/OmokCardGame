@@ -35,6 +35,10 @@ public class BoardState
     private readonly HashSet<(int dir, int col, int row)> _scoredWindows
         = new HashSet<(int, int, int)>();
 
+    // 카드로 "둘 수 없게" 막은 칸들(돌+칸 제거 카드 등). 벽 카드도 나중에 여기에 얹는다.
+    private readonly HashSet<(int col, int row)> _blocked
+        = new HashSet<(int, int)>();
+
     // 4방향 단위벡터: 가로, 세로, ↗대각, ↘대각.
     private static readonly (int dc, int dr)[] Directions =
     {
@@ -63,7 +67,19 @@ public class BoardState
     /// 그 칸에 돌을 둘 수 있는지 — 미리보기와 실제 착수가 공유하는 단일 규칙.
     /// 지금은 "보드 안의 빈 칸"이면 가능. 벽·함정 카드가 생기면 여기에만 조건을 더한다.
     /// </summary>
-    public bool IsPlayable(int col, int row) => IsEmpty(col, row);
+    public bool IsPlayable(int col, int row) => IsEmpty(col, row) && !IsBlocked(col, row);
+
+    /// <summary>그 칸이 카드로 막혀 있는가.</summary>
+    public bool IsBlocked(int col, int row) => _blocked.Contains((col, row));
+
+    /// <summary>그 칸을 둘 수 없게 막는다(돌+칸 제거, 벽 카드 등). 빈 칸에만 의미가 있다.</summary>
+    public void Block(int col, int row)
+    {
+        if (InBounds(col, row)) _blocked.Add((col, row));
+    }
+
+    /// <summary>막힌 칸을 해제한다(임시 벽 해제 등, 나중 단계용).</summary>
+    public void Unblock(int col, int row) => _blocked.Remove((col, row));
 
     public bool IsBoardFull => StoneCount >= Size * Size;
 
@@ -171,6 +187,7 @@ public class BoardState
     {
         System.Array.Clear(_cells, 0, _cells.Length);
         _scoredWindows.Clear();
+        _blocked.Clear();
         StoneCount = 0;
         BlackScore = 0;
         WhiteScore = 0;

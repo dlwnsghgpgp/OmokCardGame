@@ -6,7 +6,7 @@ public enum CardType { Active, Counter, Passive }
 
 /// <summary>
 /// 모든 카드 정의의 베이스(ScriptableObject). 메타데이터 + 이미지 + 효과(Execute).
-/// 이미지 필드는 8a-2b에서 손패 UI가 참조한다(지금은 비워둬도 됨).
+/// 이미지 필드는 손패 UI(CardView)가 참조한다(지금은 비워둬도 단색 카드로 표시됨).
 /// </summary>
 public abstract class CardData : ScriptableObject
 {
@@ -19,7 +19,7 @@ public abstract class CardData : ScriptableObject
 
     public abstract CardType Type { get; }
 
-    /// <summary>지금 이 카드를 쓸 수 있는가(미구현·대상없음 등이면 false → UI 비활성/무시).</summary>
+    /// <summary>지금 이 카드를 쓸 수 있는가(미구현·대상없음 등이면 false).</summary>
     public virtual bool CanUse(CardContext ctx) => true;
 
     /// <summary>카드 효과(코루틴). 타겟팅 대기가 있어 IEnumerator로 둔다.</summary>
@@ -43,20 +43,38 @@ public class RemoveStoneCardData : CardData
     }
 }
 
-/// <summary>추가 돌 두기: 8a-3에서 구현 예정.</summary>
+/// <summary>추가 돌 두기: 빈 칸을 골라 내 색 돌을 하나 더 놓는다(정규 착수와 별개).</summary>
 [CreateAssetMenu(menuName = "Omok/Cards/ExtraStone (추가 돌 두기)", fileName = "ExtraStoneCard")]
 public class ExtraStoneCardData : CardData
 {
     public override CardType Type => CardType.Active;
-    public override bool CanUse(CardContext ctx) => false;         // 8a-3에서 활성화
-    public override IEnumerator Execute(CardContext ctx) { yield break; }
+
+    public override IEnumerator Execute(CardContext ctx)
+    {
+        // 둘 수 있는 빈 칸만 유효 대상.
+        yield return ctx.PickTarget((c, r) => ctx.Board.IsPlayable(c, r));
+        if (ctx.Cancelled) yield break;
+
+        var res = ctx.PlaceStoneAt(ctx.PickedCol, ctx.PickedRow, ctx.User);
+        Debug.Log($"추가 돌 두기 → ({ctx.PickedCol},{ctx.PickedRow}) 득점:{res.PointsScored}");
+    }
 }
 
-/// <summary>돌+칸 제거: 8a-3에서 구현 예정(막힌 칸 기능 필요).</summary>
+/// <summary>돌+칸 제거: 상대 돌 하나를 지우고, 그 칸을 아무도 못 두게 막는다.</summary>
 [CreateAssetMenu(menuName = "Omok/Cards/RemoveAndBlock (돌+칸 제거)", fileName = "RemoveAndBlockCard")]
 public class RemoveAndBlockCardData : CardData
 {
     public override CardType Type => CardType.Active;
-    public override bool CanUse(CardContext ctx) => false;         // 8a-3에서 활성화
-    public override IEnumerator Execute(CardContext ctx) { yield break; }
+
+    public override IEnumerator Execute(CardContext ctx)
+    {
+        // 상대 돌이 있는 칸만 유효 대상.
+        yield return ctx.PickTarget((c, r) => ctx.Board.GetCell(c, r) == ctx.Opponent);
+        if (ctx.Cancelled) yield break;
+
+        int c2 = ctx.PickedCol, r2 = ctx.PickedRow;
+        ctx.RemoveStoneAt(c2, r2);   // 돌 제거(윈도우 잠금도 자동 해제)
+        ctx.BlockCell(c2, r2);       // 그 칸을 막음(IsPlayable=false)
+        Debug.Log($"돌+칸 제거 → ({c2},{r2}) 제거 후 차단");
+    }
 }

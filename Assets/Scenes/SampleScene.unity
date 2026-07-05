@@ -1832,6 +1832,7 @@ MonoBehaviour:
   previewPrefab: {fileID: 3011457974285258189, guid: 11e71ef5041ec694eb177a6cfdb62ef7, type: 3}
   playableColor: {r: 1, g: 1, b: 0, a: 0.6}
   blockedColor: {r: 1, g: 0, b: 0, a: 0.6}
+  blockedMarkerPrefab: {fileID: 0}
   boardSize: 15
   spacing: 1
   stoneY: 0.3

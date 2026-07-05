@@ -58,4 +58,11 @@ public class CardContext
         if (res.Success) View.PlaceStoneVisual(col, row, color);
         return res;
     }
+
+    /// <summary>그 칸을 둘 수 없게 막고 화면에 표식을 놓는다(돌+칸 제거 등).</summary>
+    public void BlockCell(int col, int row)
+    {
+        Board.Block(col, row);
+        View.MarkBlockedVisual(col, row);
+    }
 }
