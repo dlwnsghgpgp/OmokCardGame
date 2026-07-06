@@ -28,6 +28,12 @@ public class GameUI : MonoBehaviour
     public TMP_Text focusName;           // 카드 이름
     public TMP_Text focusDescription;    // 카드 효과 설명
 
+    [Header("카운터 프롬프트")]
+    public GameObject counterPromptPanel;
+    public TMP_Text counterPromptText;
+    public Button counterUseButton;
+    public Button counterSkipButton;
+
     [Header("게임오버")]
     public GameObject gameOverPanel;
     public TMP_Text resultText;
@@ -35,6 +41,8 @@ public class GameUI : MonoBehaviour
 
     /// <summary>손패의 카드가 클릭됐을 때 그 인덱스를 알린다.</summary>
     public event Action<int> CardClicked;
+
+    private Action<bool> _counterDecision;
 
     void Awake()
     {
@@ -47,8 +55,14 @@ public class GameUI : MonoBehaviour
         }
         if (restartButton != null)
             restartButton.onClick.AddListener(OnRestartClicked);
+        if (counterUseButton != null)
+            counterUseButton.onClick.AddListener(OnCounterUse);
+        if (counterSkipButton != null)
+            counterSkipButton.onClick.AddListener(OnCounterSkip);
         if (gameOverPanel != null)
             gameOverPanel.SetActive(false);
+        if (counterPromptPanel != null)
+            counterPromptPanel.SetActive(false);
         if (cardFocusOverlay != null)
             cardFocusOverlay.SetActive(false);   // 처음엔 숨김
     }
@@ -64,6 +78,10 @@ public class GameUI : MonoBehaviour
         }
         if (restartButton != null)
             restartButton.onClick.RemoveListener(OnRestartClicked);
+        if (counterUseButton != null)
+            counterUseButton.onClick.RemoveListener(OnCounterUse);
+        if (counterSkipButton != null)
+            counterSkipButton.onClick.RemoveListener(OnCounterSkip);
     }
 
     private void OnScoreChanged(int black, int white)
@@ -123,6 +141,27 @@ public class GameUI : MonoBehaviour
     public void OnCardViewClicked(int index)
     {
         CardClicked?.Invoke(index);
+    }
+
+    // ── 카운터 프롬프트 (GameManager가 코루틴에서 호출) ──
+
+    public void ShowCounterPrompt(CardData card, Action<bool> onDecision)
+    {
+        _counterDecision = onDecision;
+        if (counterPromptText != null)
+            counterPromptText.text = $"카운터 발동 가능: {card.cardName}\n{card.description}\n\n사용하시겠습니까?";
+        if (counterPromptPanel != null) counterPromptPanel.SetActive(true);
+    }
+
+    private void OnCounterUse()  { ResolveCounterDecision(true); }
+    private void OnCounterSkip() { ResolveCounterDecision(false); }
+
+    private void ResolveCounterDecision(bool use)
+    {
+        if (counterPromptPanel != null) counterPromptPanel.SetActive(false);
+        var cb = _counterDecision;
+        _counterDecision = null;
+        cb?.Invoke(use);
     }
 
     // ── 게임오버 ──

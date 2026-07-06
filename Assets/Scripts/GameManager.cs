@@ -3,13 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>게임을 끝내는 방식. 새 조건을 추가하기 쉽게 한 곳에 모았다.</summary>
+/// <summary>게임을 끝내는 방식.</summary>
 public enum EndCondition { FixedMoves, TargetScore, BoardFull }
 
 /// <summary>
-/// 게임 진행 총괄. 데이터·화면·플레이어·덱·손패를 들고 턴을 굴린다.
-/// (8a-2) 한 턴 = 드로우 → [행동 요청 루프: 카드 쓰기 or 돌 두기] → 돌을 두면 턴 종료.
-/// 카드 효과는 코루틴으로 실행하며, 그 안에서 타겟팅 클릭을 기다린다.
+/// 게임 진행 총괄. 한 턴 = 드로우 → [행동 루프: 카드 or 돌] → 돌을 두면
+/// 상대에게 카운터 기회를 준 뒤 턴 종료.
 /// </summary>
 public class GameManager : MonoBehaviour
 {
@@ -29,7 +28,6 @@ public class GameManager : MonoBehaviour
     public List<CardData> deckCards = new List<CardData>();
     public int maxHandSize = 7;
 
-    // ── UI가 구독하는 이벤트들 ──
     public event Action<int, int> ScoreChanged;
     public event Action<CellState> TurnChanged;
     public event Action<string> GameOver;
@@ -44,8 +42,11 @@ public class GameManager : MonoBehaviour
     private bool _cardPlayedThisTurn;
 
     private Deck _deck;
-    private Hand _blackHand;   // 사람
-    private Hand _whiteHand;   // AI
+    private Hand _blackHand;
+    private Hand _whiteHand;
+
+    private static CellState Opponent(CellState c) =>
+        (c == CellState.Black) ? CellState.White : CellState.Black;
 
     void Start()
     {
@@ -89,7 +90,8 @@ public class GameManager : MonoBehaviour
         BeginTurn();
     }
 
-    private Hand CurrentHand() => (_currentColor == CellState.Black) ? _blackHand : _whiteHand;
+    private Hand HandOf(CellState color) => (color == CellState.Black) ? _blackHand : _whiteHand;
+    private Hand CurrentHand() => HandOf(_currentColor);
 
     private void BeginTurn()
     {
@@ -111,7 +113,7 @@ public class GameManager : MonoBehaviour
 
     private void DrawFor(CellState color)
     {
-        Hand hand = (color == CellState.Black) ? _blackHand : _whiteHand;
+        Hand hand = HandOf(color);
         if (hand.Count >= maxHandSize) return;
 
         CardData card = _deck.Draw();
@@ -122,7 +124,6 @@ public class GameManager : MonoBehaviour
         if (color == CellState.Black) HumanHandChanged?.Invoke(_blackHand.Cards);
     }
 
-    // UI에서 사람이 손패 카드를 클릭 → 현재 에이전트가 사람이면 전달.
     private void OnHumanCardClicked(int handIndex)
     {
         if (_current is HumanPlayer hp) hp.SubmitCardChoice(handIndex);
@@ -150,9 +151,9 @@ public class GameManager : MonoBehaviour
         }
 
         var checkCtx = new CardContext(_board, boardView, _currentColor);
-        if (!card.CanUse(checkCtx))
+        if (card.Type != CardType.Active || !card.CanUse(checkCtx))
         {
-            Debug.Log($"{card.cardName}: 아직 사용할 수 없습니다(8a-3에서 구현).");
+            Debug.Log($"{card.cardName}: 지금 사용할 수 없는 카드입니다(카운터는 상대 턴에 자동 발동).");
             RequestActionFromCurrent();
             return;
         }
@@ -163,7 +164,7 @@ public class GameManager : MonoBehaviour
     private IEnumerator ResolveCard(CardData card, int index)
     {
         var ctx = new CardContext(_board, boardView, _currentColor);
-        yield return StartCoroutine(card.Execute(ctx));   // 타겟팅 등 대기 포함
+        yield return StartCoroutine(card.Execute(ctx));
 
         if (!ctx.Cancelled)
         {
@@ -175,12 +176,9 @@ public class GameManager : MonoBehaviour
 
             if (CheckGameEnd()) { EndGame(); yield break; }
         }
-        else
-        {
-            Debug.Log($"카드 취소: {card.cardName}");
-        }
+        else Debug.Log($"카드 취소: {card.cardName}");
 
-        RequestActionFromCurrent();   // 이어서 카드를 더 쓰거나(막힘) 돌을 둔다
+        RequestActionFromCurrent();
     }
 
     private void PlaceStoneAction(int col, int row)
@@ -199,10 +197,66 @@ public class GameManager : MonoBehaviour
         if (result.PointsScored > 0)
             Debug.Log($"{_currentColor} +{result.PointsScored}점!  흑 {_board.BlackScore} : 백 {_board.WhiteScore}");
 
-        if (CheckGameEnd()) { EndGame(); return; }
+        // 착수 후: 상대에게 카운터 기회를 준 뒤 턴을 마무리한다(비동기).
+        StartCoroutine(AfterStonePlaced(col, row, result.PointsScored));
+    }
 
-        _currentColor = (_currentColor == CellState.Black) ? CellState.White : CellState.Black;
+    private IEnumerator AfterStonePlaced(int col, int row, int points)
+    {
+        CellState placer = _currentColor;
+        CellState reactor = Opponent(placer);
+
+        var evt = new GameEventInfo
+        {
+            Trigger = GameTrigger.StonePlaced,
+            Actor = placer,
+            Col = col,
+            Row = row,
+            PointsScored = points,
+        };
+
+        yield return StartCoroutine(OfferCounters(reactor, evt));
+
+        if (CheckGameEnd()) { EndGame(); yield break; }
+
+        _currentColor = Opponent(_currentColor);
         BeginTurn();
+    }
+
+    // 상대(reactor)의 손패에서 조건이 맞는 카운터를 찾아 사용 여부를 묻고, 예면 실행.
+    private IEnumerator OfferCounters(CellState reactor, GameEventInfo evt)
+    {
+        // AI는 아직 카운터를 쓰지 않는다(8d에서). 지금은 사람(흑)만.
+        if (reactor != CellState.Black || gameUI == null) yield break;
+
+        Hand hand = _blackHand;
+        int i = 0;
+        while (i < hand.Count)
+        {
+            CardData card = hand.Get(i);
+            var ctx = new CardContext(_board, boardView, reactor) { TriggerInfo = evt };
+
+            if (card != null && card.Type == CardType.Counter && card.CanCounter(evt, ctx))
+            {
+                bool decided = false, use = false;
+                gameUI.ShowCounterPrompt(card, d => { use = d; decided = true; });
+                while (!decided) yield return null;
+
+                if (use)
+                {
+                    yield return StartCoroutine(card.Execute(ctx));
+                    if (!ctx.Cancelled)
+                    {
+                        hand.RemoveAt(i);
+                        ScoreChanged?.Invoke(_board.BlackScore, _board.WhiteScore);
+                        HumanHandChanged?.Invoke(_blackHand.Cards);
+                        Debug.Log($"카운터 사용: {card.cardName}");
+                        continue;   // 카드가 빠져 뒤가 당겨졌으니 i 유지하고 계속 스캔
+                    }
+                }
+            }
+            i++;
+        }
     }
 
     private bool CheckGameEnd()

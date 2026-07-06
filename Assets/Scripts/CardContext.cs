@@ -18,6 +18,9 @@ public class CardContext
     public int PickedCol { get; private set; }
     public int PickedRow { get; private set; }
 
+    // 카운터 실행 시 GameManager가 채워주는 사건 정보(어떤 행동에 반응하는지).
+    public GameEventInfo TriggerInfo;
+
     public CardContext(BoardState board, BoardView view, CellState user)
     {
         Board = board;
