@@ -7,8 +7,8 @@ using UnityEngine;
 public enum EndCondition { FixedMoves, TargetScore, BoardFull }
 
 /// <summary>
-/// 게임 진행 총괄. 한 턴 = 드로우 → [행동 루프: 카드 or 돌] → 돌을 두면
-/// 상대에게 카운터 기회를 준 뒤 턴 종료.
+/// 게임 진행 총괄. 한 턴 = 드로우 → [행동 루프] → 필요한 만큼 착수 → 상대 카운터 기회 → 턴 종료.
+/// 패시브는 들고만 있어도 적용되며(추가 착수·돌 보호), 누가 들었든 자동으로 작동한다.
 /// </summary>
 public class GameManager : MonoBehaviour
 {
@@ -40,6 +40,8 @@ public class GameManager : MonoBehaviour
     private CellState _currentColor;
     private bool _gameOver;
     private bool _cardPlayedThisTurn;
+    private int _placementsThisTurn;
+    private int _placementsRequired;
 
     private Deck _deck;
     private Hand _blackHand;
@@ -93,13 +95,29 @@ public class GameManager : MonoBehaviour
     private Hand HandOf(CellState color) => (color == CellState.Black) ? _blackHand : _whiteHand;
     private Hand CurrentHand() => HandOf(_currentColor);
 
+    // 특정 색 플레이어가 해당 패시브를 손에 들고 있는가.
+    private bool HasPassiveEffect(CellState color, PassiveEffect effect)
+    {
+        foreach (var c in HandOf(color).Cards)
+            if (c != null && c.Passive == effect) return true;
+        return false;
+    }
+
+    // 패시브 조회가 주입된 카드 컨텍스트를 만든다.
+    private CardContext NewContext(CellState user)
+        => new CardContext(_board, boardView, user) { HasPassive = HasPassiveEffect };
+
     private void BeginTurn()
     {
         if (_gameOver) return;
 
         DrawFor(_currentColor);
         TurnChanged?.Invoke(_currentColor);
+
         _cardPlayedThisTurn = false;
+        _placementsThisTurn = 0;
+        // 추가 착수 패시브를 들고 있으면 이번 턴 착수 2회.
+        _placementsRequired = HasPassiveEffect(_currentColor, PassiveEffect.ExtraStonePerTurn) ? 2 : 1;
 
         _current = (_currentColor == CellState.Black) ? _blackPlayer : _whitePlayer;
         RequestActionFromCurrent();
@@ -120,7 +138,8 @@ public class GameManager : MonoBehaviour
         if (card == null) return;
 
         hand.Add(card);
-        Debug.Log($"{color} 드로우: {card.cardName} (덱 {_deck.Count}장 남음)");
+        string kind = card.Type == CardType.Passive ? "[패시브·공개]" : "";
+        Debug.Log($"{color} 드로우: {card.cardName} {kind} (덱 {_deck.Count}장 남음)");
         if (color == CellState.Black) HumanHandChanged?.Invoke(_blackHand.Cards);
     }
 
@@ -143,6 +162,12 @@ public class GameManager : MonoBehaviour
         CardData card = hand.Get(index);
 
         if (card == null) { RequestActionFromCurrent(); return; }
+        if (card.Type == CardType.Passive)
+        {
+            Debug.Log($"{card.cardName}: 패시브 카드는 들고만 있어도 효과가 적용됩니다.");
+            RequestActionFromCurrent();
+            return;
+        }
         if (_cardPlayedThisTurn)
         {
             Debug.Log("이번 턴엔 이미 카드를 사용했습니다.");
@@ -150,10 +175,10 @@ public class GameManager : MonoBehaviour
             return;
         }
 
-        var checkCtx = new CardContext(_board, boardView, _currentColor);
+        var checkCtx = NewContext(_currentColor);
         if (card.Type != CardType.Active || !card.CanUse(checkCtx))
         {
-            Debug.Log($"{card.cardName}: 지금 사용할 수 없는 카드입니다(카운터는 상대 턴에 자동 발동).");
+            Debug.Log($"{card.cardName}: 지금 사용할 수 없는 카드입니다.");
             RequestActionFromCurrent();
             return;
         }
@@ -163,7 +188,7 @@ public class GameManager : MonoBehaviour
 
     private IEnumerator ResolveCard(CardData card, int index)
     {
-        var ctx = new CardContext(_board, boardView, _currentColor);
+        var ctx = NewContext(_currentColor);
         yield return StartCoroutine(card.Execute(ctx));
 
         if (!ctx.Cancelled)
@@ -191,13 +216,13 @@ public class GameManager : MonoBehaviour
             return;
         }
 
+        _placementsThisTurn++;
         boardView.PlaceStoneVisual(col, row, _currentColor);
         ScoreChanged?.Invoke(_board.BlackScore, _board.WhiteScore);
 
         if (result.PointsScored > 0)
             Debug.Log($"{_currentColor} +{result.PointsScored}점!  흑 {_board.BlackScore} : 백 {_board.WhiteScore}");
 
-        // 착수 후: 상대에게 카운터 기회를 준 뒤 턴을 마무리한다(비동기).
         StartCoroutine(AfterStonePlaced(col, row, result.PointsScored));
     }
 
@@ -219,22 +244,29 @@ public class GameManager : MonoBehaviour
 
         if (CheckGameEnd()) { EndGame(); yield break; }
 
+        // 추가 착수 패시브: 아직 이번 턴 착수가 덜 됐으면 같은 플레이어가 이어서 둔다.
+        if (_placementsThisTurn < _placementsRequired)
+        {
+            Debug.Log($"추가 착수: {_placementsThisTurn}/{_placementsRequired} — 한 번 더 두세요.");
+            RequestActionFromCurrent();
+            yield break;
+        }
+
         _currentColor = Opponent(_currentColor);
         BeginTurn();
     }
 
-    // 상대(reactor)의 손패에서 조건이 맞는 카운터를 찾아 사용 여부를 묻고, 예면 실행.
     private IEnumerator OfferCounters(CellState reactor, GameEventInfo evt)
     {
-        // AI는 아직 카운터를 쓰지 않는다(8d에서). 지금은 사람(흑)만.
-        if (reactor != CellState.Black || gameUI == null) yield break;
+        if (reactor != CellState.Black || gameUI == null) yield break;   // 사람(흑)만, 8d에서 AI
 
         Hand hand = _blackHand;
         int i = 0;
         while (i < hand.Count)
         {
             CardData card = hand.Get(i);
-            var ctx = new CardContext(_board, boardView, reactor) { TriggerInfo = evt };
+            var ctx = NewContext(reactor);
+            ctx.TriggerInfo = evt;
 
             if (card != null && card.Type == CardType.Counter && card.CanCounter(evt, ctx))
             {
@@ -251,7 +283,7 @@ public class GameManager : MonoBehaviour
                         ScoreChanged?.Invoke(_board.BlackScore, _board.WhiteScore);
                         HumanHandChanged?.Invoke(_blackHand.Cards);
                         Debug.Log($"카운터 사용: {card.cardName}");
-                        continue;   // 카드가 빠져 뒤가 당겨졌으니 i 유지하고 계속 스캔
+                        continue;
                     }
                 }
             }

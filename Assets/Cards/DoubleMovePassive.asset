@@ -10,10 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 0}
-  m_Name: NullifyStoneCard
-  m_EditorClassIdentifier: Assembly-CSharp::NullifyStoneCardData
-  cardName: "\uB3CC \uBB34\uD6A8\uD654"
-  description: "\uC0C1\uB300\uAC00 \uB3CC\uC744 \uB458\uB54C, \uADF8 \uB3CC\uC744
-    \uBB34\uD6A8\uC2DC\uD0B5\uB2C8\uB2E4."
+  m_Name: DoubleMovePassive
+  m_EditorClassIdentifier: Assembly-CSharp::DoubleMovePassiveData
+  cardName: "\uB3CC \uB450\uBC88 \uB450\uAE30"
+  description: "\uC790\uC2E0\uC758 \uD134\uB9C8\uB2E4 2\uBC88 \uB458 \uC218 \uC788\uC2B5\uB2C8\uB2E4."
   artFull: {fileID: 0}
   artIcon: {fileID: 0}

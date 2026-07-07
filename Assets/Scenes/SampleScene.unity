@@ -1887,11 +1887,10 @@ MonoBehaviour:
   targetScore: 5
   aiThinkDelay: 0.4
   deckCards:
-  - {fileID: 11400000, guid: 55a20f605e0597f4a84302abb5d247ef, type: 2}
-  - {fileID: 11400000, guid: 55a20f605e0597f4a84302abb5d247ef, type: 2}
-  - {fileID: 11400000, guid: 55a20f605e0597f4a84302abb5d247ef, type: 2}
-  - {fileID: 11400000, guid: 55a20f605e0597f4a84302abb5d247ef, type: 2}
-  - {fileID: 11400000, guid: 55a20f605e0597f4a84302abb5d247ef, type: 2}
+  - {fileID: 11400000, guid: fe29e1a72e624f34dac900b6018403ce, type: 2}
+  - {fileID: 11400000, guid: fe29e1a72e624f34dac900b6018403ce, type: 2}
+  - {fileID: 11400000, guid: fe29e1a72e624f34dac900b6018403ce, type: 2}
+  - {fileID: 11400000, guid: fe29e1a72e624f34dac900b6018403ce, type: 2}
   maxHandSize: 2
 --- !u!4 &1308136583
 Transform:
