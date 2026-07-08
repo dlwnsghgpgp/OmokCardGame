@@ -9,11 +9,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: 0c6464ef21c094447bd2fee25a273f85, type: 3}
   m_Name: RemoveAndBlockCard
   m_EditorClassIdentifier: Assembly-CSharp::RemoveAndBlockCardData
-  cardName: "\uD30C\uAD34"
-  description: "\uB3CC\uACFC \uD568\uAED8 \uB458 \uC218 \uC788\uB294 \uCE78\uAE4C\uC9C0
-    \uD30C\uAD34\uD560 \uC218 \uC788\uB2E4."
+  cardName: "\uCE78 \uD30C\uAD34"
+  description: "\uCE78 \uD558\uB098\uB97C \uD30C\uAD34\uD569\uB2C8\uB2E4. \uADF8
+    \uCE78\uC740 \uB450 \uBC88 \uB2E4\uC2DC \uB458 \uC218 \uC5C6\uACE0, \uCE78\uC5D0
+    \uB3CC\uC774 \uC788\uB2E4\uBA74 \uADF8 \uB3CC\uB3C4 \uC0AC\uB77C\uC9D1\uB2C8\uB2E4.(\uC774\uBBF8
+    \uB9CC\uB4E4\uC5B4\uC9C4 \uC624\uBAA9\uC744 \uC5C6\uC560\uB3C4 \uC810\uC218\uAC00
+    \uCCA0\uD68C\uB418\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.)"
   artFull: {fileID: 0}
   artIcon: {fileID: 0}

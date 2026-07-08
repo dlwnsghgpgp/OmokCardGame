@@ -29,6 +29,9 @@ public class BoardView : MonoBehaviour
     public event Action<int, int> CellClicked;
     public Func<int, int, bool> CanPlace;   // 평소 미리보기/착수 가능 판정(보통 board.IsPlayable)
 
+    /// <summary>타겟 모드 진입(true)/이탈(false)을 알린다. UI 안내에 사용.</summary>
+    public event Action<bool> TargetingChanged;
+
     private GameObject[,] _stones;
     private GameObject[,] _blockedMarkers;
     private Camera _cam;
@@ -123,6 +126,7 @@ public class BoardView : MonoBehaviour
         _targetValid = isValid;
         _onTargetPicked = onPicked;
         _onTargetCancel = onCancel;
+        TargetingChanged?.Invoke(true);
     }
 
     private void EndTargeting()
@@ -131,6 +135,7 @@ public class BoardView : MonoBehaviour
         _targetValid = null;
         _onTargetPicked = null;
         _onTargetCancel = null;
+        TargetingChanged?.Invoke(false);
     }
 
     private void TryPickTarget()

@@ -9,11 +9,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
+  m_Script: {fileID: 11500000, guid: a8e3823679f6c4a45b6b2016e0dd7824, type: 3}
   m_Name: GuardPassive
   m_EditorClassIdentifier: Assembly-CSharp::GuardPassiveData
   cardName: "\uB3CC \uD30C\uAD34 \uBA74\uC5ED"
-  description: "\uC0C1\uB300\uC758 \uB3CC \uD30C\uAD34 \uCE74\uB4DC \uD6A8\uACFC\uB97C
-    \uBB34\uC2DC\uD55C\uB2E4."
+  description: "\uC0C1\uB300\uAC00 \uB3CC\uC744 \uD30C\uAD34\uD558\uB294 \uD6A8\uACFC\uC5D0
+    \uBA74\uC5ED\uC774 \uB429\uB2C8\uB2E4."
   artFull: {fileID: 0}
   artIcon: {fileID: 0}

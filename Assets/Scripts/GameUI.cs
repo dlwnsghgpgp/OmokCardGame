@@ -13,10 +13,12 @@ public class GameUI : MonoBehaviour
 {
     [Header("참조")]
     public GameManager gameManager;
+    public BoardView boardView;   // 타겟 모드 안내를 받기 위해
 
     [Header("텍스트")]
     public TMP_Text scoreText;
     public TMP_Text turnText;
+    public TMP_Text targetingHintText;   // 타겟 모드일 때 "우클릭으로 취소" 안내
 
     [Header("손패")]
     public Transform handContainer;      // Horizontal Layout Group을 단 빈 오브젝트
@@ -53,6 +55,10 @@ public class GameUI : MonoBehaviour
             gameManager.GameOver += OnGameOver;
             gameManager.HumanHandChanged += OnHumanHandChanged;
         }
+        if (boardView != null)
+            boardView.TargetingChanged += OnTargetingChanged;
+        if (targetingHintText != null)
+            targetingHintText.gameObject.SetActive(false);
         if (restartButton != null)
             restartButton.onClick.AddListener(OnRestartClicked);
         if (counterUseButton != null)
@@ -76,6 +82,8 @@ public class GameUI : MonoBehaviour
             gameManager.GameOver -= OnGameOver;
             gameManager.HumanHandChanged -= OnHumanHandChanged;
         }
+        if (boardView != null)
+            boardView.TargetingChanged -= OnTargetingChanged;
         if (restartButton != null)
             restartButton.onClick.RemoveListener(OnRestartClicked);
         if (counterUseButton != null)
@@ -93,6 +101,13 @@ public class GameUI : MonoBehaviour
     {
         if (turnText == null) return;
         turnText.text = (color == CellState.Black) ? "흑 차례 (당신)" : "백 차례 (AI)";
+    }
+
+    private void OnTargetingChanged(bool active)
+    {
+        if (targetingHintText == null) return;
+        targetingHintText.text = "대상을 클릭하세요 (우클릭: 취소)";
+        targetingHintText.gameObject.SetActive(active);
     }
 
     private void OnHumanHandChanged(IReadOnlyList<CardData> cards)
