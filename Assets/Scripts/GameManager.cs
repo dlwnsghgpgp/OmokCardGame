@@ -15,6 +15,7 @@ public class GameManager : MonoBehaviour
     [Header("참조")]
     public BoardView boardView;
     public GameUI gameUI;
+    public AIHandView aiHandView;   // AI 손패 3D 표시(선택)
 
     [Header("종료 조건")]
     public EndCondition endCondition = EndCondition.FixedMoves;
@@ -32,6 +33,7 @@ public class GameManager : MonoBehaviour
     public event Action<CellState> TurnChanged;
     public event Action<string> GameOver;
     public event Action<IReadOnlyList<CardData>> HumanHandChanged;
+    public event Action<int> AIHandCountChanged;   // AI 손패 장수(내용은 비공개)
 
     private BoardState _board;
     private IPlayerAgent _blackPlayer;
@@ -59,6 +61,7 @@ public class GameManager : MonoBehaviour
         _whitePlayer = new AIPlayer(aiThinkDelay);
 
         if (gameUI != null) gameUI.CardClicked += OnHumanCardClicked;
+        if (aiHandView != null) AIHandCountChanged += aiHandView.SetHandCount;
 
         StartGame();
     }
@@ -66,6 +69,7 @@ public class GameManager : MonoBehaviour
     void OnDestroy()
     {
         if (gameUI != null) gameUI.CardClicked -= OnHumanCardClicked;
+        if (aiHandView != null) AIHandCountChanged -= aiHandView.SetHandCount;
     }
 
     void Update()
@@ -88,6 +92,7 @@ public class GameManager : MonoBehaviour
 
         ScoreChanged?.Invoke(_board.BlackScore, _board.WhiteScore);
         HumanHandChanged?.Invoke(_blackHand.Cards);
+        AIHandCountChanged?.Invoke(_whiteHand.Count);
         Debug.Log($"게임 시작! 흑(사람)부터. 덱 {_deck.Count}장.");
         BeginTurn();
     }
@@ -141,6 +146,7 @@ public class GameManager : MonoBehaviour
         string kind = card.Type == CardType.Passive ? "[패시브·공개]" : "";
         Debug.Log($"{color} 드로우: {card.cardName} {kind} (덱 {_deck.Count}장 남음)");
         if (color == CellState.Black) HumanHandChanged?.Invoke(_blackHand.Cards);
+        else AIHandCountChanged?.Invoke(_whiteHand.Count);
     }
 
     private void OnHumanCardClicked(int handIndex)
@@ -197,6 +203,7 @@ public class GameManager : MonoBehaviour
             _cardPlayedThisTurn = true;
             ScoreChanged?.Invoke(_board.BlackScore, _board.WhiteScore);
             if (_currentColor == CellState.Black) HumanHandChanged?.Invoke(_blackHand.Cards);
+            else AIHandCountChanged?.Invoke(_whiteHand.Count);
             Debug.Log($"카드 사용 완료: {card.cardName}");
 
             if (CheckGameEnd()) { EndGame(); yield break; }

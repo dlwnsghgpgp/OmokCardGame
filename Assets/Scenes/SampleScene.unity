@@ -1885,6 +1885,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
   boardView: {fileID: 1773876155}
   gameUI: {fileID: 843716193}
+  aiHandView: {fileID: 2092360419}
   endCondition: 0
   maxMovesPerPlayer: 30
   targetScore: 5
@@ -2849,6 +2850,53 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2015538018}
   m_CullTransparentMesh: 1
+--- !u!1 &2092360418
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2092360420}
+  - component: {fileID: 2092360419}
+  m_Layer: 0
+  m_Name: AIHand
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2092360419
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2092360418}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9e7ae116ecffdac438e249dc5ccc11d7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AIHandView
+  cardBackPrefab: {fileID: 6488460391707014834, guid: a9ed72761fe6df9488690fe415383ffb, type: 3}
+  spacing: 3
+  maxWidth: 12
+--- !u!4 &2092360420
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2092360418}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.3, z: 10}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2124256095
 GameObject:
   m_ObjectHideFlags: 0
@@ -2996,3 +3044,4 @@ SceneRoots:
   - {fileID: 1308136583}
   - {fileID: 843716197}
   - {fileID: 136478673}
+  - {fileID: 2092360420}
