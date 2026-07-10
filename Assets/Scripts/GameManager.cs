@@ -109,8 +109,57 @@ public class GameManager : MonoBehaviour
     }
 
     // 패시브 조회가 주입된 카드 컨텍스트를 만든다.
+    // 사용자가 AI(백)라면 자동 대상 선택기도 함께 넣어 클릭 없이 진행되게 한다.
     private CardContext NewContext(CellState user)
-        => new CardContext(_board, boardView, user) { HasPassive = HasPassiveEffect };
+    {
+        var ctx = new CardContext(_board, boardView, user) { HasPassive = HasPassiveEffect };
+        if (user == CellState.White)   // 백 = AI
+            ctx.AutoPickTarget = AutoPickForAI;
+        return ctx;
+    }
+
+    /// <summary>AI용 자동 대상 선택: 유효 칸 중 상대 줄이 가장 긴 곳을 고른다.</summary>
+    private bool AutoPickForAI(Func<int, int, bool> isValid, out int col, out int row)
+    {
+        col = row = -1;
+        int size = _board.Size;
+        int bestLen = -1;
+
+        for (int c = 0; c < size; c++)
+        for (int r = 0; r < size; r++)
+        {
+            if (!isValid(c, r)) continue;
+            int len = LongestLineThrough(c, r);   // 그 칸을 지나는 가장 긴 같은 색 줄
+            if (len > bestLen) { bestLen = len; col = c; row = r; }
+        }
+        return bestLen >= 0;   // 유효 칸이 하나라도 있었는가
+    }
+
+    // (c,r)을 지나는, 그 칸 돌 색 기준 가장 긴 연속 줄 길이. 빈 칸이면 0.
+    private int LongestLineThrough(int c, int r)
+    {
+        CellState color = _board.GetCell(c, r);
+        if (color == CellState.Empty) return 0;
+
+        var dirs = new (int dc, int dr)[] { (1, 0), (0, 1), (1, 1), (1, -1) };
+        int best = 1;
+        foreach (var (dc, dr) in dirs)
+        {
+            int len = 1 + CountSameDir(c, r, dc, dr, color) + CountSameDir(c, r, -dc, -dr, color);
+            if (len > best) best = len;
+        }
+        return best;
+    }
+
+    private int CountSameDir(int c, int r, int dc, int dr, CellState color)
+    {
+        int n = 0, cc = c + dc, rr = r + dr;
+        while (_board.InBounds(cc, rr) && _board.GetCell(cc, rr) == color)
+        {
+            n++; cc += dc; rr += dr;
+        }
+        return n;
+    }
 
     private void BeginTurn()
     {
@@ -125,6 +174,14 @@ public class GameManager : MonoBehaviour
         _placementsRequired = HasPassiveEffect(_currentColor, PassiveEffect.ExtraStonePerTurn) ? 2 : 1;
 
         _current = (_currentColor == CellState.Black) ? _blackPlayer : _whitePlayer;
+
+        // AI에게 자기 손패를 알려주고 턴 상태를 초기화한다(사람은 UI로 보므로 불필요).
+        if (_current is AIPlayer ai)
+        {
+            ai.SetHand(HandOf(_currentColor).Cards);
+            ai.BeginTurn();
+        }
+
         RequestActionFromCurrent();
     }
 
@@ -265,7 +322,12 @@ public class GameManager : MonoBehaviour
 
     private IEnumerator OfferCounters(CellState reactor, GameEventInfo evt)
     {
-        if (reactor != CellState.Black || gameUI == null) yield break;   // 사람(흑)만, 8d에서 AI
+        if (reactor == CellState.White)   // AI: 조건이 맞으면 자동 발동
+        {
+            yield return StartCoroutine(OfferCountersAI(evt));
+            yield break;
+        }
+        if (gameUI == null) yield break;
 
         Hand hand = _blackHand;
         int i = 0;
@@ -290,6 +352,39 @@ public class GameManager : MonoBehaviour
                         ScoreChanged?.Invoke(_board.BlackScore, _board.WhiteScore);
                         HumanHandChanged?.Invoke(_blackHand.Cards);
                         Debug.Log($"카운터 사용: {card.cardName}");
+                        continue;
+                    }
+                }
+            }
+            i++;
+        }
+    }
+
+    // AI의 카운터: 사람이 득점했거나 5목 직전 줄을 만들었으면 무효화한다.
+    private IEnumerator OfferCountersAI(GameEventInfo evt)
+    {
+        Hand hand = _whiteHand;
+        int i = 0;
+        while (i < hand.Count)
+        {
+            CardData card = hand.Get(i);
+            var ctx = NewContext(CellState.White);
+            ctx.TriggerInfo = evt;
+
+            if (card != null && card.Type == CardType.Counter && card.CanCounter(evt, ctx))
+            {
+                // 판단 기준: 그 수가 득점했거나, 4목 이상 줄을 만들었으면 막을 가치가 있다.
+                bool worthIt = evt.PointsScored > 0 || LongestLineThrough(evt.Col, evt.Row) >= 4;
+                if (worthIt)
+                {
+                    yield return new WaitForSeconds(aiThinkDelay);   // 반응하는 척 잠깐 멈춤
+                    yield return StartCoroutine(card.Execute(ctx));
+                    if (!ctx.Cancelled)
+                    {
+                        hand.RemoveAt(i);
+                        ScoreChanged?.Invoke(_board.BlackScore, _board.WhiteScore);
+                        AIHandCountChanged?.Invoke(_whiteHand.Count);
+                        Debug.Log($"AI 카운터 사용: {card.cardName}");
                         continue;
                     }
                 }

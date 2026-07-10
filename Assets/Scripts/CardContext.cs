@@ -22,6 +22,14 @@ public class CardContext
     // 특정 색 플레이어가 특정 패시브를 보유했는지 묻는 함수(GameManager가 주입).
     public Func<CellState, PassiveEffect, bool> HasPassive;
 
+    // AI 차례일 때 GameManager가 주입하는 자동 대상 선택기.
+    // null이면 사람이 마우스로 고른다. 있으면 클릭 없이 즉시 대상이 정해진다.
+    // 유효한 대상이 없으면 false를 반환해 카드가 취소되게 한다.
+    public AutoTargetPicker AutoPickTarget;
+
+    /// <summary>유효 판정 함수를 받아 대상 하나를 고른다. 못 고르면 false.</summary>
+    public delegate bool AutoTargetPicker(Func<int, int, bool> isValid, out int col, out int row);
+
     public CardContext(BoardState board, BoardView view, CellState user)
     {
         Board = board;
@@ -32,9 +40,21 @@ public class CardContext
 
     public IEnumerator PickTarget(Func<int, int, bool> isValid)
     {
-        bool done = false;
         Cancelled = false;
 
+        // AI 차례: 클릭을 기다리지 않고 자동으로 대상을 고른다.
+        if (AutoPickTarget != null)
+        {
+            if (AutoPickTarget(isValid, out int ac, out int ar))
+            {
+                PickedCol = ac; PickedRow = ar; Cancelled = false;
+            }
+            else Cancelled = true;   // 유효 대상이 없으면 카드 취소
+            yield break;
+        }
+
+        // 사람 차례: 보드 타겟 모드로 클릭/우클릭을 기다린다.
+        bool done = false;
         View.BeginTargeting(
             isValid,
             (c, r) => { PickedCol = c; PickedRow = r; Cancelled = false; done = true; },
