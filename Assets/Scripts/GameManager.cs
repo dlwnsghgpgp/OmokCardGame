@@ -25,8 +25,9 @@ public class GameManager : MonoBehaviour
     [Header("AI 설정")]
     public float aiThinkDelay = 0.4f;
 
-    [Header("카드")]
-    public List<CardData> deckCards = new List<CardData>();
+    [Header("카드 — 개별 덱")]
+    public List<CardData> blackDeckCards = new List<CardData>();   // 흑(사람) 덱 구성
+    public List<CardData> whiteDeckCards = new List<CardData>();   // 백(AI) 덱 구성
     public int maxHandSize = 7;
 
     public event Action<int, int> ScoreChanged;
@@ -45,7 +46,8 @@ public class GameManager : MonoBehaviour
     private int _placementsThisTurn;
     private int _placementsRequired;
 
-    private Deck _deck;
+    private Deck _blackDeck;
+    private Deck _whiteDeck;
     private Hand _blackHand;
     private Hand _whiteHand;
 
@@ -82,8 +84,10 @@ public class GameManager : MonoBehaviour
         _board.Reset();
         boardView.ClearAll();
 
-        _deck = new Deck(deckCards);
-        _deck.Shuffle();
+        _blackDeck = new Deck(blackDeckCards);
+        _whiteDeck = new Deck(whiteDeckCards);
+        _blackDeck.Shuffle();
+        _whiteDeck.Shuffle();
         _blackHand = new Hand();
         _whiteHand = new Hand();
 
@@ -93,7 +97,7 @@ public class GameManager : MonoBehaviour
         ScoreChanged?.Invoke(_board.BlackScore, _board.WhiteScore);
         HumanHandChanged?.Invoke(_blackHand.Cards);
         AIHandCountChanged?.Invoke(_whiteHand.Count);
-        Debug.Log($"게임 시작! 흑(사람)부터. 덱 {_deck.Count}장.");
+        Debug.Log($"게임 시작! 흑(사람)부터. 흑 덱 {_blackDeck.Count} / 백 덱 {_whiteDeck.Count}장.");
         BeginTurn();
     }
 
@@ -191,17 +195,20 @@ public class GameManager : MonoBehaviour
         _current.RequestAction(_board, _currentColor, OnActionChosen);
     }
 
+    private Deck DeckOf(CellState color) => (color == CellState.Black) ? _blackDeck : _whiteDeck;
+
     private void DrawFor(CellState color)
     {
         Hand hand = HandOf(color);
         if (hand.Count >= maxHandSize) return;
 
-        CardData card = _deck.Draw();
-        if (card == null) return;
+        Deck deck = DeckOf(color);
+        CardData card = deck.Draw();
+        if (card == null) return;   // 그 플레이어의 덱이 비면 못 뽑음
 
         hand.Add(card);
         string kind = card.Type == CardType.Passive ? "[패시브·공개]" : "";
-        Debug.Log($"{color} 드로우: {card.cardName} {kind} (덱 {_deck.Count}장 남음)");
+        Debug.Log($"{color} 드로우: {card.cardName} {kind} (덱 {deck.Count}장 남음)");
         if (color == CellState.Black) HumanHandChanged?.Invoke(_blackHand.Cards);
         else AIHandCountChanged?.Invoke(_whiteHand.Count);
     }
