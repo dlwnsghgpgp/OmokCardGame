@@ -737,6 +737,55 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 439966480}
   m_CullTransparentMesh: 1
+--- !u!1 &474473516
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 474473518}
+  - component: {fileID: 474473517}
+  m_Layer: 0
+  m_Name: Graveyard
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &474473517
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 474473516}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86f1535fb49694b4c8e71e133a3c084a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GraveyardStackView
+  cardFrontPrefab: {fileID: 7535820426619646363, guid: 68e7667b2c50dff4fabadd209f1c5cbc, type: 3}
+  cardBackPrefab: {fileID: 6488460391707014834, guid: a9ed72761fe6df9488690fe415383ffb, type: 3}
+  stepXZ: 0.03
+  stepY: 0.01
+  maxVisible: 12
+--- !u!4 &474473518
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 474473516}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -11, y: 0.3, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &620951624
 GameObject:
   m_ObjectHideFlags: 0
@@ -1886,21 +1935,19 @@ MonoBehaviour:
   boardView: {fileID: 1773876155}
   gameUI: {fileID: 843716193}
   aiHandView: {fileID: 2092360419}
+  graveyardStackView: {fileID: 474473517}
   endCondition: 0
   maxMovesPerPlayer: 30
   targetScore: 5
   aiThinkDelay: 0.4
-  deckCards:
+  blackDeckCards:
   - {fileID: 11400000, guid: fe29e1a72e624f34dac900b6018403ce, type: 2}
   - {fileID: 11400000, guid: a77e9b79b85c8c544b6126fbc3ba5ba2, type: 2}
-  - {fileID: 11400000, guid: 6e7a8f79bf9884a4eb4ff7ff631dbbf4, type: 2}
+  - {fileID: 11400000, guid: a77e9b79b85c8c544b6126fbc3ba5ba2, type: 2}
+  whiteDeckCards:
   - {fileID: 11400000, guid: b933e8c013204d24fa8e147c6e5a68ef, type: 2}
   - {fileID: 11400000, guid: 77ffeb5360412244391d95044fdd9e2f, type: 2}
   - {fileID: 11400000, guid: fdce05a422133ff449249804d1bbec9c, type: 2}
-  - {fileID: 11400000, guid: a77e9b79b85c8c544b6126fbc3ba5ba2, type: 2}
-  - {fileID: 11400000, guid: a77e9b79b85c8c544b6126fbc3ba5ba2, type: 2}
-  - {fileID: 11400000, guid: fdce05a422133ff449249804d1bbec9c, type: 2}
-  - {fileID: 11400000, guid: b933e8c013204d24fa8e147c6e5a68ef, type: 2}
   maxHandSize: 3
 --- !u!4 &1308136583
 Transform:
@@ -3045,3 +3092,4 @@ SceneRoots:
   - {fileID: 843716197}
   - {fileID: 136478673}
   - {fileID: 2092360420}
+  - {fileID: 474473518}

@@ -15,7 +15,8 @@ public class GameManager : MonoBehaviour
     [Header("참조")]
     public BoardView boardView;
     public GameUI gameUI;
-    public AIHandView aiHandView;   // AI 손패 3D 표시(선택)
+    public AIHandView aiHandView;       // AI 손패 3D 표시(선택)
+    public GraveyardStackView graveyardStackView;   // 묘지 3D 더미 표시(선택)
 
     [Header("종료 조건")]
     public EndCondition endCondition = EndCondition.FixedMoves;
@@ -35,6 +36,7 @@ public class GameManager : MonoBehaviour
     public event Action<string> GameOver;
     public event Action<IReadOnlyList<CardData>> HumanHandChanged;
     public event Action<int> AIHandCountChanged;   // AI 손패 장수(내용은 비공개)
+    public event Action<int> GraveyardChanged;     // 묘지 장수
 
     private BoardState _board;
     private IPlayerAgent _blackPlayer;
@@ -50,6 +52,7 @@ public class GameManager : MonoBehaviour
     private Deck _whiteDeck;
     private Hand _blackHand;
     private Hand _whiteHand;
+    private Graveyard _graveyard = new Graveyard();
 
     private static CellState Opponent(CellState c) =>
         (c == CellState.Black) ? CellState.White : CellState.Black;
@@ -64,6 +67,7 @@ public class GameManager : MonoBehaviour
 
         if (gameUI != null) gameUI.CardClicked += OnHumanCardClicked;
         if (aiHandView != null) AIHandCountChanged += aiHandView.SetHandCount;
+        if (graveyardStackView != null) GraveyardChanged += graveyardStackView.SetCount;
 
         StartGame();
     }
@@ -72,6 +76,7 @@ public class GameManager : MonoBehaviour
     {
         if (gameUI != null) gameUI.CardClicked -= OnHumanCardClicked;
         if (aiHandView != null) AIHandCountChanged -= aiHandView.SetHandCount;
+        if (graveyardStackView != null) GraveyardChanged -= graveyardStackView.SetCount;
     }
 
     void Update()
@@ -97,11 +102,16 @@ public class GameManager : MonoBehaviour
         ScoreChanged?.Invoke(_board.BlackScore, _board.WhiteScore);
         HumanHandChanged?.Invoke(_blackHand.Cards);
         AIHandCountChanged?.Invoke(_whiteHand.Count);
+        _graveyard.Clear();
+        GraveyardChanged?.Invoke(_graveyard.Count);
         Debug.Log($"게임 시작! 흑(사람)부터. 흑 덱 {_blackDeck.Count} / 백 덱 {_whiteDeck.Count}장.");
         BeginTurn();
     }
 
     private Hand HandOf(CellState color) => (color == CellState.Black) ? _blackHand : _whiteHand;
+
+    /// <summary>묘지에 쌓인 기록(버려진 순서). 9-2b 목록 표시에서 읽는다.</summary>
+    public IReadOnlyList<GraveEntry> GraveyardEntries => _graveyard.Entries;
     private Hand CurrentHand() => HandOf(_currentColor);
 
     // 특정 색 플레이어가 해당 패시브를 손에 들고 있는가.
@@ -264,6 +274,8 @@ public class GameManager : MonoBehaviour
         if (!ctx.Cancelled)
         {
             CurrentHand().RemoveAt(index);
+            _graveyard.Add(card, _currentColor);
+            GraveyardChanged?.Invoke(_graveyard.Count);
             _cardPlayedThisTurn = true;
             ScoreChanged?.Invoke(_board.BlackScore, _board.WhiteScore);
             if (_currentColor == CellState.Black) HumanHandChanged?.Invoke(_blackHand.Cards);
@@ -356,6 +368,8 @@ public class GameManager : MonoBehaviour
                     if (!ctx.Cancelled)
                     {
                         hand.RemoveAt(i);
+                        _graveyard.Add(card, CellState.Black);
+                        GraveyardChanged?.Invoke(_graveyard.Count);
                         ScoreChanged?.Invoke(_board.BlackScore, _board.WhiteScore);
                         HumanHandChanged?.Invoke(_blackHand.Cards);
                         Debug.Log($"카운터 사용: {card.cardName}");
@@ -389,6 +403,8 @@ public class GameManager : MonoBehaviour
                     if (!ctx.Cancelled)
                     {
                         hand.RemoveAt(i);
+                        _graveyard.Add(card, CellState.White);
+                        GraveyardChanged?.Invoke(_graveyard.Count);
                         ScoreChanged?.Invoke(_board.BlackScore, _board.WhiteScore);
                         AIHandCountChanged?.Invoke(_whiteHand.Count);
                         Debug.Log($"AI 카운터 사용: {card.cardName}");
