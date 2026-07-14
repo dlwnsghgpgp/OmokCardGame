@@ -30,6 +30,11 @@ public class GameUI : MonoBehaviour
     public TMP_Text focusName;           // 카드 이름
     public TMP_Text focusDescription;    // 카드 효과 설명
 
+    [Header("묘지 목록")]
+    public GameObject graveyardPanel;       // 묘지 카드 목록 패널(루트)
+    public Transform graveyardContainer;    // Horizontal/Grid Layout Group을 단 오브젝트
+    public UnityEngine.UI.Button graveyardCloseButton;
+
     [Header("카운터 프롬프트")]
     public GameObject counterPromptPanel;
     public TMP_Text counterPromptText;
@@ -65,6 +70,10 @@ public class GameUI : MonoBehaviour
             counterUseButton.onClick.AddListener(OnCounterUse);
         if (counterSkipButton != null)
             counterSkipButton.onClick.AddListener(OnCounterSkip);
+        if (graveyardCloseButton != null)
+            graveyardCloseButton.onClick.AddListener(CloseGraveyard);
+        if (graveyardPanel != null)
+            graveyardPanel.SetActive(false);
         if (gameOverPanel != null)
             gameOverPanel.SetActive(false);
         if (counterPromptPanel != null)
@@ -90,6 +99,8 @@ public class GameUI : MonoBehaviour
             counterUseButton.onClick.RemoveListener(OnCounterUse);
         if (counterSkipButton != null)
             counterSkipButton.onClick.RemoveListener(OnCounterSkip);
+        if (graveyardCloseButton != null)
+            graveyardCloseButton.onClick.RemoveListener(CloseGraveyard);
     }
 
     private void OnScoreChanged(int black, int white)
@@ -155,7 +166,40 @@ public class GameUI : MonoBehaviour
 
     public void OnCardViewClicked(int index)
     {
+        if (index < 0) return;   // 묘지 목록 카드(-1) 등은 클릭해도 사용되지 않음
         CardClicked?.Invoke(index);
+    }
+
+    // ── 묘지 목록 ──
+
+    /// <summary>버려진 순서대로 카드 앞면을 나열해 보여준다. 호버 시 카드 포커스가 뜬다.</summary>
+    public void ShowGraveyard(System.Collections.Generic.IReadOnlyList<GraveEntry> entries)
+    {
+        if (graveyardPanel == null || graveyardContainer == null || cardButtonPrefab == null) return;
+
+        for (int i = graveyardContainer.childCount - 1; i >= 0; i--)
+            Destroy(graveyardContainer.GetChild(i).gameObject);
+
+        // 버려진 순서대로(오래된 것부터). 주인 구분은 표시하지 않는다.
+        for (int i = 0; i < entries.Count; i++)
+        {
+            GameObject go = Instantiate(cardButtonPrefab);
+            go.transform.SetParent(graveyardContainer, false);
+
+            var view = go.GetComponent<CardView>();
+            // index -1: 묘지 카드는 클릭해도 사용되지 않게(손패가 아님). 호버 포커스만 동작.
+            if (view != null) view.Setup(entries[i].Card, -1, this);
+        }
+
+        graveyardPanel.SetActive(true);
+        if (boardView != null) boardView.InputLocked = true;   // 목록 보는 동안 착수 금지
+    }
+
+    public void CloseGraveyard()
+    {
+        HideCardFocus();
+        if (graveyardPanel != null) graveyardPanel.SetActive(false);
+        if (boardView != null) boardView.InputLocked = false;  // 다시 착수 허용
     }
 
     // ── 카운터 프롬프트 (GameManager가 코루틴에서 호출) ──

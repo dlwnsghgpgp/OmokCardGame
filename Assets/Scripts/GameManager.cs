@@ -17,6 +17,7 @@ public class GameManager : MonoBehaviour
     public GameUI gameUI;
     public AIHandView aiHandView;       // AI 손패 3D 표시(선택)
     public GraveyardStackView graveyardStackView;   // 묘지 3D 더미 표시(선택)
+    public GraveyardClickable graveyardClickable;   // 묘지 클릭 감지(선택)
 
     [Header("종료 조건")]
     public EndCondition endCondition = EndCondition.FixedMoves;
@@ -68,6 +69,7 @@ public class GameManager : MonoBehaviour
         if (gameUI != null) gameUI.CardClicked += OnHumanCardClicked;
         if (aiHandView != null) AIHandCountChanged += aiHandView.SetHandCount;
         if (graveyardStackView != null) GraveyardChanged += graveyardStackView.SetCount;
+        if (graveyardClickable != null) graveyardClickable.Clicked += OnGraveyardClicked;
 
         StartGame();
     }
@@ -77,6 +79,7 @@ public class GameManager : MonoBehaviour
         if (gameUI != null) gameUI.CardClicked -= OnHumanCardClicked;
         if (aiHandView != null) AIHandCountChanged -= aiHandView.SetHandCount;
         if (graveyardStackView != null) GraveyardChanged -= graveyardStackView.SetCount;
+        if (graveyardClickable != null) graveyardClickable.Clicked -= OnGraveyardClicked;
     }
 
     void Update()
@@ -112,6 +115,11 @@ public class GameManager : MonoBehaviour
 
     /// <summary>묘지에 쌓인 기록(버려진 순서). 9-2b 목록 표시에서 읽는다.</summary>
     public IReadOnlyList<GraveEntry> GraveyardEntries => _graveyard.Entries;
+
+    private void OnGraveyardClicked()
+    {
+        if (gameUI != null) gameUI.ShowGraveyard(_graveyard.Entries);
+    }
     private Hand CurrentHand() => HandOf(_currentColor);
 
     // 특정 색 플레이어가 해당 패시브를 손에 들고 있는가.

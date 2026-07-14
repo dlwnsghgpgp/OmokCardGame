@@ -32,6 +32,9 @@ public class BoardView : MonoBehaviour
     /// <summary>타겟 모드 진입(true)/이탈(false)을 알린다. UI 안내에 사용.</summary>
     public event Action<bool> TargetingChanged;
 
+    /// <summary>true면 보드 입력(클릭·타겟팅·미리보기)을 모두 무시한다(묘지 목록 등이 열렸을 때).</summary>
+    public bool InputLocked { get; set; }
+
     private GameObject[,] _stones;
     private GameObject[,] _blockedMarkers;
     private Camera _cam;
@@ -63,6 +66,12 @@ public class BoardView : MonoBehaviour
 
     void Update()
     {
+        if (InputLocked)
+        {
+            if (_preview != null && _preview.activeSelf) _preview.SetActive(false);
+            return;   // 입력 잠금 중엔 호버·클릭·타겟팅 모두 무시
+        }
+
         UpdateHover();
         if (Mouse.current == null) return;
 
