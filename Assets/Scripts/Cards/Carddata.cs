@@ -1,8 +1,8 @@
 using System.Collections;
 using UnityEngine;
 
-/// <summary>카드 분류. Active는 내 턴에, Counter는 상대 행동에 반응해, Passive는 상시.</summary>
-public enum CardType { Active, Counter, Passive }
+/// <summary>카드 분류. Active=내 턴에, Counter=상대 행동에 반응, Passive=상시, Field=양쪽 모두에 영향.</summary>
+public enum CardType { Active, Counter, Passive, Field }
 
 /// <summary>패시브가 상시 적용하는 효과의 종류. None은 패시브가 아님을 뜻한다.</summary>
 public enum PassiveEffect { None, ExtraStonePerTurn, ProtectOwnStones }

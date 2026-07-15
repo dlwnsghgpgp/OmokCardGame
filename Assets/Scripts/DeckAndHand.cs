@@ -23,6 +23,12 @@ public class Deck
         }
     }
 
+    /// <summary>카드를 덱 맨 아래에 넣는다(필드 카드 선택에서 고르지 않은 카드 반환용).</summary>
+    public void AddBottom(CardData card)
+    {
+        if (card != null) _cards.Insert(0, card);
+    }
+
     /// <summary>맨 위 카드를 뽑아 반환. 비어 있으면 null.</summary>
     public CardData Draw()
     {

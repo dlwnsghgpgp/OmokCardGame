@@ -30,6 +30,11 @@ public class GameUI : MonoBehaviour
     public TMP_Text focusName;           // 카드 이름
     public TMP_Text focusDescription;    // 카드 효과 설명
 
+    [Header("필드 카드 선택")]
+    public GameObject fieldChoicePanel;      // 3장 중 1장 고르는 패널(루트)
+    public Transform fieldChoiceContainer;   // Horizontal Layout Group을 단 오브젝트
+    public TMP_Text fieldChoiceTitle;        // "점수가 낮은 흑이 선택합니다" 등 안내
+
     [Header("묘지 목록")]
     public GameObject graveyardPanel;       // 묘지 카드 목록 패널(루트)
     public Transform graveyardContainer;    // Horizontal/Grid Layout Group을 단 오브젝트
@@ -50,6 +55,7 @@ public class GameUI : MonoBehaviour
     public event Action<int> CardClicked;
 
     private Action<bool> _counterDecision;
+    private Action<int> _fieldChoice;
 
     void Awake()
     {
@@ -74,6 +80,8 @@ public class GameUI : MonoBehaviour
             graveyardCloseButton.onClick.AddListener(CloseGraveyard);
         if (graveyardPanel != null)
             graveyardPanel.SetActive(false);
+        if (fieldChoicePanel != null)
+            fieldChoicePanel.SetActive(false);
         if (gameOverPanel != null)
             gameOverPanel.SetActive(false);
         if (counterPromptPanel != null)
@@ -138,7 +146,7 @@ public class GameUI : MonoBehaviour
             go.transform.SetParent(handContainer, false);
 
             var view = go.GetComponent<CardView>();
-            if (view != null) view.Setup(cards[i], i, this);
+            if (view != null) view.Setup(cards[i], i, this, CardViewMode.Hand);
         }
     }
 
@@ -164,10 +172,61 @@ public class GameUI : MonoBehaviour
         if (cardFocusOverlay != null) cardFocusOverlay.SetActive(false);
     }
 
-    public void OnCardViewClicked(int index)
+    public void OnCardViewClicked(int index, CardViewMode mode)
     {
-        if (index < 0) return;   // 묘지 목록 카드(-1) 등은 클릭해도 사용되지 않음
-        CardClicked?.Invoke(index);
+        switch (mode)
+        {
+            case CardViewMode.Display:      // 묘지 목록 등 열람 전용 — 클릭 무시
+                return;
+
+            case CardViewMode.FieldChoice:  // 필드 카드 선택 확정
+                var cb = _fieldChoice;
+                _fieldChoice = null;
+                CloseFieldChoice();
+                cb?.Invoke(index);
+                return;
+
+            case CardViewMode.Hand:         // 손패 — 카드 사용
+                CardClicked?.Invoke(index);
+                return;
+        }
+    }
+
+    // ── 필드 카드 선택 ──
+
+    /// <summary>필드 카드 후보를 보여주고, 하나를 고르면 onChosen(인덱스)를 부른다.</summary>
+    public void ShowFieldChoice(System.Collections.Generic.IReadOnlyList<CardData> cards,
+                                string title, Action<int> onChosen)
+    {
+        if (fieldChoicePanel == null || fieldChoiceContainer == null || cardButtonPrefab == null)
+        {
+            onChosen?.Invoke(0);   // UI가 없으면 첫 카드로 자동 진행(안전장치)
+            return;
+        }
+
+        _fieldChoice = onChosen;
+        if (fieldChoiceTitle != null) fieldChoiceTitle.text = title;
+
+        for (int i = fieldChoiceContainer.childCount - 1; i >= 0; i--)
+            Destroy(fieldChoiceContainer.GetChild(i).gameObject);
+
+        for (int i = 0; i < cards.Count; i++)
+        {
+            GameObject go = Instantiate(cardButtonPrefab);
+            go.transform.SetParent(fieldChoiceContainer, false);
+            var view = go.GetComponent<CardView>();
+            if (view != null) view.Setup(cards[i], i, this, CardViewMode.FieldChoice);
+        }
+
+        fieldChoicePanel.SetActive(true);
+        if (boardView != null) boardView.InputLocked = true;   // 고르는 동안 착수 금지
+    }
+
+    public void CloseFieldChoice()
+    {
+        HideCardFocus();
+        if (fieldChoicePanel != null) fieldChoicePanel.SetActive(false);
+        if (boardView != null) boardView.InputLocked = false;
     }
 
     // ── 묘지 목록 ──
@@ -187,8 +246,8 @@ public class GameUI : MonoBehaviour
             go.transform.SetParent(graveyardContainer, false);
 
             var view = go.GetComponent<CardView>();
-            // index -1: 묘지 카드는 클릭해도 사용되지 않게(손패가 아님). 호버 포커스만 동작.
-            if (view != null) view.Setup(entries[i].Card, -1, this);
+            // Display 모드: 클릭해도 사용되지 않고 호버 포커스만 동작.
+            if (view != null) view.Setup(entries[i].Card, i, this, CardViewMode.Display);
         }
 
         graveyardPanel.SetActive(true);

@@ -18,6 +18,7 @@ public class GameManager : MonoBehaviour
     public AIHandView aiHandView;       // AI 손패 3D 표시(선택)
     public GraveyardStackView graveyardStackView;   // 묘지 3D 더미 표시(선택)
     public GraveyardClickable graveyardClickable;   // 묘지 클릭 감지(선택)
+    public FieldZoneView fieldZoneView;             // 필드 카드 3D 표시(선택)
 
     [Header("종료 조건")]
     public EndCondition endCondition = EndCondition.FixedMoves;
@@ -31,6 +32,11 @@ public class GameManager : MonoBehaviour
     public List<CardData> blackDeckCards = new List<CardData>();   // 흑(사람) 덱 구성
     public List<CardData> whiteDeckCards = new List<CardData>();   // 백(AI) 덱 구성
     public int maxHandSize = 7;
+
+    [Header("필드 카드")]
+    public List<CardData> fieldDeckCards = new List<CardData>();   // 필드 전용 덱(양쪽 공용)
+    public int fieldCardTurn = 10;      // 이 턴(양쪽 합산)에 딱 한 번 필드 카드가 나온다
+    public int fieldChoiceCount = 3;    // 제시할 후보 장수
 
     public event Action<int, int> ScoreChanged;
     public event Action<CellState> TurnChanged;
@@ -55,6 +61,11 @@ public class GameManager : MonoBehaviour
     private Hand _whiteHand;
     private Graveyard _graveyard = new Graveyard();
 
+    private Deck _fieldDeck;
+    private FieldCardData _fieldCard;   // 필드에 깔린 카드(없으면 null)
+    private int _turnCount;             // 양쪽 합산 턴 수
+    private string _pendingResult;      // 필드 카드가 정한 종료 결과(있으면 이걸 사용)
+
     private static CellState Opponent(CellState c) =>
         (c == CellState.Black) ? CellState.White : CellState.Black;
 
@@ -70,6 +81,7 @@ public class GameManager : MonoBehaviour
         if (aiHandView != null) AIHandCountChanged += aiHandView.SetHandCount;
         if (graveyardStackView != null) GraveyardChanged += graveyardStackView.SetCount;
         if (graveyardClickable != null) graveyardClickable.Clicked += OnGraveyardClicked;
+        if (fieldZoneView != null) fieldZoneView.HoverChanged += OnFieldCardHover;
 
         StartGame();
     }
@@ -80,6 +92,7 @@ public class GameManager : MonoBehaviour
         if (aiHandView != null) AIHandCountChanged -= aiHandView.SetHandCount;
         if (graveyardStackView != null) GraveyardChanged -= graveyardStackView.SetCount;
         if (graveyardClickable != null) graveyardClickable.Clicked -= OnGraveyardClicked;
+        if (fieldZoneView != null) fieldZoneView.HoverChanged -= OnFieldCardHover;
     }
 
     void Update()
@@ -107,6 +120,13 @@ public class GameManager : MonoBehaviour
         AIHandCountChanged?.Invoke(_whiteHand.Count);
         _graveyard.Clear();
         GraveyardChanged?.Invoke(_graveyard.Count);
+
+        _fieldDeck = new Deck(fieldDeckCards);
+        _fieldDeck.Shuffle();
+        _fieldCard = null;
+        _turnCount = 0;
+        _pendingResult = null;
+        if (fieldZoneView != null) fieldZoneView.SetCard(null);
         Debug.Log($"게임 시작! 흑(사람)부터. 흑 덱 {_blackDeck.Count} / 백 덱 {_whiteDeck.Count}장.");
         BeginTurn();
     }
@@ -186,6 +206,26 @@ public class GameManager : MonoBehaviour
     private void BeginTurn()
     {
         if (_gameOver) return;
+        StartCoroutine(BeginTurnRoutine());
+    }
+
+    private IEnumerator BeginTurnRoutine()
+    {
+        if (_gameOver) yield break;
+
+        _turnCount++;
+
+        // 정해진 턴에 딱 한 번, 필드 카드 후보를 제시하고 점수가 낮은 쪽이 고른다.
+        if (_turnCount == fieldCardTurn && _fieldCard == null && _fieldDeck.Count > 0)
+            yield return StartCoroutine(OfferFieldCard());
+
+        // 필드 카드의 매 턴 효과(예: 감염 확산)
+        if (_fieldCard != null)
+        {
+            _fieldCard.OnTurnBegin(NewFieldContext());
+            ScoreChanged?.Invoke(_board.BlackScore, _board.WhiteScore);
+            if (CheckGameEnd()) { EndGame(); yield break; }
+        }
 
         DrawFor(_currentColor);
         TurnChanged?.Invoke(_currentColor);
@@ -424,9 +464,84 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    private FieldContext NewFieldContext() => new FieldContext(_board, boardView);
+
+    // 필드 존 카드에 마우스를 올리면 손패와 같은 카드 포커스를 띄운다.
+    private void OnFieldCardHover(bool over)
+    {
+        if (gameUI == null) return;
+        if (over && _fieldCard != null) gameUI.ShowCardFocus(_fieldCard);
+        else gameUI.HideCardFocus();
+    }
+
+    /// <summary>필드 덱에서 후보를 뽑아, 점수가 낮은 플레이어가 1장을 고르게 한다.</summary>
+    private IEnumerator OfferFieldCard()
+    {
+        // 후보 뽑기
+        var candidates = new List<CardData>();
+        for (int i = 0; i < fieldChoiceCount; i++)
+        {
+            var c = _fieldDeck.Draw();
+            if (c == null) break;
+            candidates.Add(c);
+        }
+        if (candidates.Count == 0) yield break;
+
+        // 점수가 낮은 쪽이 선택. 동점이면 흑(사람).
+        CellState chooser = (_board.WhiteScore < _board.BlackScore) ? CellState.White : CellState.Black;
+        Debug.Log($"[필드] {_turnCount}턴 — {chooser}(점수 낮음)가 필드 카드를 고릅니다. 후보 {candidates.Count}장.");
+
+        int picked = -1;
+
+        if (chooser == CellState.Black && gameUI != null)
+        {
+            // 사람: UI로 고르게 하고 기다린다.
+            bool decided = false;
+            gameUI.ShowFieldChoice(candidates, "필드 카드를 선택하세요 (점수가 낮은 쪽의 권한)",
+                                   i => { picked = i; decided = true; });
+            while (!decided) yield return null;
+        }
+        else
+        {
+            // AI: 지금은 무작위 선택(판단 로직은 나중에 강화 가능).
+            yield return new WaitForSeconds(aiThinkDelay);
+            picked = UnityEngine.Random.Range(0, candidates.Count);
+        }
+
+        if (picked < 0 || picked >= candidates.Count) picked = 0;
+
+        // 고르지 않은 카드는 덱 아래로 되돌린다.
+        for (int i = 0; i < candidates.Count; i++)
+            if (i != picked) _fieldDeck.AddBottom(candidates[i]);
+
+        _fieldCard = candidates[picked] as FieldCardData;
+        if (_fieldCard == null)
+        {
+            Debug.LogWarning("[필드] 필드 덱에 필드 카드가 아닌 카드가 들어 있습니다.");
+            yield break;
+        }
+
+        if (fieldZoneView != null) fieldZoneView.SetCard(_fieldCard);
+        _fieldCard.OnActivated(NewFieldContext());
+        Debug.Log($"[필드] 발동: {_fieldCard.cardName}");
+    }
+
     private bool CheckGameEnd()
     {
         if (_board.IsBoardFull) return true;
+
+        // 필드 카드가 승패를 정하면 그게 우선한다.
+        if (_fieldCard != null)
+        {
+            if (_fieldCard.CheckWin(NewFieldContext(), out string fieldResult))
+            {
+                _pendingResult = fieldResult;
+                return true;
+            }
+            // 이 카드가 기존 종료 조건을 덮어쓰면, 여기서 끝내지 않는다.
+            if (_fieldCard.SuppressNormalEnd) return false;
+        }
+
         switch (endCondition)
         {
             case EndCondition.FixedMoves:
@@ -445,10 +560,19 @@ public class GameManager : MonoBehaviour
         _blackPlayer.Cancel();
         _whitePlayer.Cancel();
 
-        string winner = _board.BlackScore > _board.WhiteScore ? "흑 승리"
-                      : _board.WhiteScore > _board.BlackScore ? "백 승리"
-                      : "무승부";
-        string result = $"{winner}\n흑 {_board.BlackScore} : 백 {_board.WhiteScore}";
+        string result;
+        if (!string.IsNullOrEmpty(_pendingResult))
+        {
+            // 필드 카드가 정한 승패(예: 좀비 전멸)
+            result = $"{_pendingResult}\n흑 {_board.BlackScore} : 백 {_board.WhiteScore}";
+        }
+        else
+        {
+            string winner = _board.BlackScore > _board.WhiteScore ? "흑 승리"
+                          : _board.WhiteScore > _board.BlackScore ? "백 승리"
+                          : "무승부";
+            result = $"{winner}\n흑 {_board.BlackScore} : 백 {_board.WhiteScore}";
+        }
 
         Debug.Log($"게임 종료!  {result.Replace("\n", "  ")}");
         GameOver?.Invoke(result);
