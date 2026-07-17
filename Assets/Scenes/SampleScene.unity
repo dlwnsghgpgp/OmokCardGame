@@ -480,7 +480,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 364314781}
-  - component: {fileID: 364314780}
+  - component: {fileID: 364314782}
   m_Layer: 5
   m_Name: HandContainer
   m_TagString: Untagged
@@ -488,32 +488,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &364314780
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 364314779}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 30649d3a9faa99c48a7b1166b86bf2a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.HorizontalLayoutGroup
-  m_Padding:
-    m_Left: 0
-    m_Right: 0
-    m_Top: 0
-    m_Bottom: 0
-  m_ChildAlignment: 0
-  m_Spacing: 0
-  m_ChildForceExpandWidth: 1
-  m_ChildForceExpandHeight: 1
-  m_ChildControlWidth: 0
-  m_ChildControlHeight: 0
-  m_ChildScaleWidth: 0
-  m_ChildScaleHeight: 0
-  m_ReverseArrangement: 0
 --- !u!224 &364314781
 RectTransform:
   m_ObjectHideFlags: 0
@@ -533,6 +507,25 @@ RectTransform:
   m_AnchoredPosition: {x: -35, y: 0}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0}
+--- !u!114 &364314782
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 364314779}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 30055d3f2fbcc3d4db6bc8ff000029ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HandLayout
+  spacing: 90
+  maxWidth: 700
+  anglePerCard: 6
+  maxTotalAngle: 40
+  arcDrop: 8
+  hoverLift: 45
+  hoverScale: 1.15
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -1202,6 +1195,7 @@ MonoBehaviour:
   targetingHintText: {fileID: 1416136578}
   handContainer: {fileID: 364314781}
   cardButtonPrefab: {fileID: 7023959121558802209, guid: 2a12d1cc3d6a2a34e9eceb1b7b71b52a, type: 3}
+  handLayout: {fileID: 364314782}
   cardFocusOverlay: {fileID: 675829187}
   focusImage: {fileID: 767631789}
   focusName: {fileID: 1144319980}
@@ -1297,8 +1291,8 @@ RectTransform:
   - {fileID: 2124256098}
   - {fileID: 915851985}
   - {fileID: 439966481}
-  - {fileID: 364314781}
   - {fileID: 675829188}
+  - {fileID: 364314781}
   - {fileID: 1530924575}
   - {fileID: 1416136580}
   - {fileID: 1416459606}

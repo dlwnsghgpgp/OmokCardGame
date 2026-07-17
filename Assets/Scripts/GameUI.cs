@@ -23,6 +23,7 @@ public class GameUI : MonoBehaviour
     [Header("손패")]
     public Transform handContainer;      // Horizontal Layout Group을 단 빈 오브젝트
     public GameObject cardButtonPrefab;  // CardView가 붙은 카드 프리팹
+    public HandLayout handLayout;        // 부채꼴 배치(HandContainer에 부착)
 
     [Header("카드 포커스(호버 시)")]
     public GameObject cardFocusOverlay;  // 화면을 덮는 어두운 패널(루트)
@@ -135,9 +136,15 @@ public class GameUI : MonoBehaviour
 
         if (handContainer == null || cardButtonPrefab == null) return;
 
-        // 기존 카드 제거
+        // 기존 카드 제거.
+        // 주의: Destroy는 프레임 끝에 실행되므로, 먼저 부모에서 떼어내야
+        // 곧바로 이어지는 배치 계산에서 "이미 지운 카드"가 끼어들지 않는다.
         for (int i = handContainer.childCount - 1; i >= 0; i--)
-            Destroy(handContainer.GetChild(i).gameObject);
+        {
+            Transform child = handContainer.GetChild(i);
+            child.SetParent(null, false);
+            Destroy(child.gameObject);
+        }
 
         // 손패 다시 그리기 — 각 카드에 CardView.Setup 으로 데이터 주입
         for (int i = 0; i < cards.Count; i++)
@@ -148,6 +155,8 @@ public class GameUI : MonoBehaviour
             var view = go.GetComponent<CardView>();
             if (view != null) view.Setup(cards[i], i, this, CardViewMode.Hand);
         }
+
+        if (handLayout != null) handLayout.Arrange();   // 부채꼴로 정렬
     }
 
     // ── CardView가 호출하는 콜백 ──

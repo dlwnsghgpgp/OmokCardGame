@@ -27,6 +27,10 @@ public class CardView : MonoBehaviour,
     private int _index;
     private GameUI _owner;
     private CardViewMode _mode;
+    private HandLayout _layout;   // 손패 모드일 때만 존재(부채꼴 배치·호버 떠오름)
+
+    /// <summary>손패에서의 인덱스. HandLayout이 자리를 정하는 기준으로 쓴다.</summary>
+    public int Index => _index;
 
     /// <summary>GameUI가 카드 데이터·인덱스·주인·용도를 넣어준다.</summary>
     public void Setup(CardData card, int index, GameUI owner, CardViewMode mode = CardViewMode.Hand)
@@ -36,6 +40,9 @@ public class CardView : MonoBehaviour,
         _owner = owner;
         _mode = mode;
 
+        // 손패 모드에서만 부채꼴/떠오름 연출을 쓴다(묘지·필드 선택은 Layout Group 사용).
+        _layout = (mode == CardViewMode.Hand) ? GetComponentInParent<HandLayout>() : null;
+
         if (iconImage != null)
         {
             Sprite icon = card.artIcon != null ? card.artIcon : card.artFull;
@@ -44,7 +51,16 @@ public class CardView : MonoBehaviour,
         if (nameLabel != null) nameLabel.text = card.cardName;
     }
 
-    public void OnPointerEnter(PointerEventData e) { _owner?.ShowCardFocus(_card); }
-    public void OnPointerExit(PointerEventData e)  { _owner?.HideCardFocus(); }
+    public void OnPointerEnter(PointerEventData e)
+    {
+        _layout?.SetHovered(this, true);   // 부채꼴에서 떠오르기
+        _owner?.ShowCardFocus(_card);      // 큰 일러스트 + 이름 + 효과
+    }
+
+    public void OnPointerExit(PointerEventData e)
+    {
+        _layout?.SetHovered(this, false);
+        _owner?.HideCardFocus();
+    }
     public void OnPointerClick(PointerEventData e) { _owner?.OnCardViewClicked(_index, _mode); }
 }
