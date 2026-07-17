@@ -12,4 +12,18 @@ public class FieldContext
         Board = board;
         View = view;
     }
+
+    /// <summary>
+    /// 그 칸의 돌을 감염시키고(데이터) 초록으로 물들인다(화면).
+    /// 빈 칸이거나 이미 감염된 돌이면 false.
+    /// </summary>
+    public bool InfectStone(int col, int row)
+    {
+        if (Board.GetCell(col, row) == CellState.Empty) return false;
+        if (Board.IsInfected(col, row)) return false;
+
+        Board.Infect(col, row);
+        View.SetStoneInfectedVisual(col, row);
+        return true;
+    }
 }

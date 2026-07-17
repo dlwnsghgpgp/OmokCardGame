@@ -39,6 +39,11 @@ public class BoardState
     private readonly HashSet<(int col, int row)> _blocked
         = new HashSet<(int, int)>();
 
+    // 감염된(좀비가 된) 돌들. 원래 주인 색은 _cells에 그대로 남고, 여기 있으면 "좀비"다.
+    // 좀비 돌은 득점 라인에 포함되지 않는다(IsWindowAllColor 참고).
+    private readonly HashSet<(int col, int row)> _infected
+        = new HashSet<(int, int)>();
+
     // 4방향 단위벡터: 가로, 세로, ↗대각, ↘대각.
     private static readonly (int dc, int dr)[] Directions =
     {
@@ -81,6 +86,31 @@ public class BoardState
     /// <summary>막힌 칸을 해제한다(임시 벽 해제 등, 나중 단계용).</summary>
     public void Unblock(int col, int row) => _blocked.Remove((col, row));
 
+    /// <summary>그 칸의 돌이 감염(좀비)되었는가.</summary>
+    public bool IsInfected(int col, int row) => _infected.Contains((col, row));
+
+    /// <summary>그 칸의 돌을 감염시킨다. 원래 주인 색은 유지되지만 득점 라인에서는 빠진다.</summary>
+    public void Infect(int col, int row)
+    {
+        if (!InBounds(col, row)) return;
+        if (_cells[col, row] == CellState.Empty) return;   // 빈 칸은 감염 불가
+        if (!_infected.Add((col, row))) return;            // 이미 감염됨
+
+        // 감염되면 그 칸을 지나던 줄이 끊기므로, 득점 잠금을 풀어 재득점 가능하게 한다.
+        // (이미 얻은 점수는 유지 — 제거 카드와 같은 규칙)
+        UnlockWindowsThrough(col, row);
+    }
+
+    /// <summary>특정 색의 "멀쩡한"(감염되지 않은) 돌 개수. 좀비 전멸 판정에 쓴다.</summary>
+    public int CountHealthy(CellState color)
+    {
+        int n = 0;
+        for (int c = 0; c < Size; c++)
+        for (int r = 0; r < Size; r++)
+            if (_cells[c, r] == color && !_infected.Contains((c, r))) n++;
+        return n;
+    }
+
     public bool IsBoardFull => StoneCount >= Size * Size;
 
     /// <summary>(col,row)에 color 돌을 놓는다. 새로 완성된 5목 개수만큼 점수를 더한다.</summary>
@@ -120,6 +150,7 @@ public class BoardState
 
         _cells[col, row] = CellState.Empty;
         StoneCount--;
+        _infected.Remove((col, row));   // 돌이 사라지면 감염 정보도 사라진다
 
         int unlocked = UnlockWindowsThrough(col, row);
         if (revokePoints && unlocked > 0)
@@ -179,8 +210,27 @@ public class BoardState
             int r = startRow + dr * i;
             if (!InBounds(c, r) || _cells[c, r] != color)
                 return false;
+            if (_infected.Contains((c, r)))   // 좀비 돌은 줄로 인정하지 않는다
+                return false;
         }
         return true;
+    }
+
+    /// <summary>
+    /// 보드를 그대로 복제한다(AI의 가상 평가용).
+    /// 돌을 다시 두는 방식과 달리 감염·차단·득점 잠금까지 정확히 옮긴다.
+    /// </summary>
+    public BoardState Clone()
+    {
+        var clone = new BoardState(Size);
+        System.Array.Copy(_cells, clone._cells, _cells.Length);
+        foreach (var w in _scoredWindows) clone._scoredWindows.Add(w);
+        foreach (var b in _blocked) clone._blocked.Add(b);
+        foreach (var i in _infected) clone._infected.Add(i);
+        clone.StoneCount = StoneCount;
+        clone.BlackScore = BlackScore;
+        clone.WhiteScore = WhiteScore;
+        return clone;
     }
 
     public void Reset()
@@ -188,6 +238,7 @@ public class BoardState
         System.Array.Clear(_cells, 0, _cells.Length);
         _scoredWindows.Clear();
         _blocked.Clear();
+        _infected.Clear();
         StoneCount = 0;
         BlackScore = 0;
         WhiteScore = 0;

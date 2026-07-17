@@ -122,6 +122,7 @@ public class AIPlayer : IPlayerAgent
         for (int r = 0; r < size; r++)
         {
             if (_board.GetCell(c, r) != Opponent) continue;
+            if (_board.IsInfected(c, r)) continue;   // 좀비가 된 돌은 위협이 아니다
             foreach (var (dc, dr) in dirs)
             {
                 int len = 1 + CountSame(c, r, dc, dr, Opponent)
@@ -184,11 +185,15 @@ public class AIPlayer : IPlayerAgent
         return value;
     }
 
+    // (c,r)에서 (dc,dr) 방향으로 "멀쩡한" 같은 색 돌이 몇 개 연속인지 센다(자기 칸 제외).
+    // 좀비(감염) 돌은 득점 라인에 안 들어가므로 여기서도 세지 않는다.
     private int CountSame(int c, int r, int dc, int dr, CellState color)
     {
         int count = 0;
         int cc = c + dc, rr = r + dr;
-        while (_board.InBounds(cc, rr) && _board.GetCell(cc, rr) == color)
+        while (_board.InBounds(cc, rr)
+               && _board.GetCell(cc, rr) == color
+               && !_board.IsInfected(cc, rr))
         {
             count++;
             cc += dc; rr += dr;
@@ -196,15 +201,6 @@ public class AIPlayer : IPlayerAgent
         return count;
     }
 
-    private BoardState CloneBoard()
-    {
-        var clone = new BoardState(_board.Size);
-        for (int c = 0; c < _board.Size; c++)
-        for (int r = 0; r < _board.Size; r++)
-        {
-            var cell = _board.GetCell(c, r);
-            if (cell != CellState.Empty) clone.PlaceStone(c, r, cell);
-        }
-        return clone;
-    }
+    // 감염·차단·득점 잠금까지 정확히 복제한다(재생 방식은 그 정보를 잃는다).
+    private BoardState CloneBoard() => _board.Clone();
 }

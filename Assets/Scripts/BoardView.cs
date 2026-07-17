@@ -18,6 +18,9 @@ public class BoardView : MonoBehaviour
     public Color playableColor = new Color(1f, 1f, 0f, 0.6f);
     public Color blockedColor  = new Color(1f, 0f, 0f, 0.6f);
 
+    [Header("감염(좀비) 표시")]
+    public Color infectedColor = new Color(0.25f, 0.85f, 0.25f);   // 좀비 돌 색
+
     [Header("막힌 칸 표시")]
     public GameObject blockedMarkerPrefab;   // 막힌 칸에 놓을 표식(없으면 표시 생략)
 
@@ -203,6 +206,21 @@ public class BoardView : MonoBehaviour
             Destroy(_stones[col, row]);
             _stones[col, row] = null;
         }
+    }
+
+    /// <summary>그 칸의 돌을 좀비(초록)로 물들인다. 돌 오브젝트는 그대로 두고 색만 바꾼다.</summary>
+    public void SetStoneInfectedVisual(int col, int row)
+    {
+        if (col < 0 || col >= boardSize || row < 0 || row >= boardSize) return;
+        GameObject stone = _stones[col, row];
+        if (stone == null) return;
+
+        var rend = stone.GetComponentInChildren<Renderer>();
+        if (rend == null) return;
+
+        var mat = rend.material;   // 인스턴스화되어 공유 머티리얼은 안 건드림
+        mat.color = infectedColor;
+        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", infectedColor);
     }
 
     public void MarkBlockedVisual(int col, int row)
