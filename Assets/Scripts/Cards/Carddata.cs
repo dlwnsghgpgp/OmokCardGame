@@ -28,6 +28,12 @@ public abstract class CardData : ScriptableObject
     /// <summary>이 사건에 카운터로 반응하는가. 기본 false.</summary>
     public virtual bool CanCounter(GameEventInfo evt, CardContext ctx) => false;
 
+    /// <summary>
+    /// 발동 연출과 실제 효과(Execute) 사이에 들어가는 카드별 연출 훅.
+    /// 기본은 비어 있고, 카드마다 오버라이드해 이펙트·애니메이션을 넣을 수 있다.
+    /// </summary>
+    public virtual IEnumerator PlayActivation(CardContext ctx) { yield break; }
+
     /// <summary>카드 효과(코루틴). 패시브는 능동 실행이 없어 비워둔다.</summary>
     public abstract IEnumerator Execute(CardContext ctx);
 }

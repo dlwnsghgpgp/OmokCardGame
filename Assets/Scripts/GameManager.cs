@@ -317,6 +317,12 @@ public class GameManager : MonoBehaviour
     private IEnumerator ResolveCard(CardData card, int index)
     {
         var ctx = NewContext(_currentColor);
+
+        // 발동 연출: 어떤 카드가 나왔는지 이미지를 잠깐 보여준다(PvP·AI 공통).
+        if (gameUI != null)
+            yield return StartCoroutine(gameUI.AnnounceCard(card, _currentColor == CellState.Black));
+        yield return StartCoroutine(card.PlayActivation(ctx));   // 카드별 연출(기본 없음)
+
         yield return StartCoroutine(card.Execute(ctx));
 
         if (!ctx.Cancelled)
@@ -412,6 +418,9 @@ public class GameManager : MonoBehaviour
 
                 if (use)
                 {
+                    if (gameUI != null)
+                        yield return StartCoroutine(gameUI.AnnounceCard(card, true));
+                    yield return StartCoroutine(card.PlayActivation(ctx));
                     yield return StartCoroutine(card.Execute(ctx));
                     if (!ctx.Cancelled)
                     {
@@ -447,6 +456,9 @@ public class GameManager : MonoBehaviour
                 if (worthIt)
                 {
                     yield return new WaitForSeconds(aiThinkDelay);   // 반응하는 척 잠깐 멈춤
+                    if (gameUI != null)
+                        yield return StartCoroutine(gameUI.AnnounceCard(card, false));
+                    yield return StartCoroutine(card.PlayActivation(ctx));
                     yield return StartCoroutine(card.Execute(ctx));
                     if (!ctx.Cancelled)
                     {
@@ -522,6 +534,11 @@ public class GameManager : MonoBehaviour
         }
 
         if (fieldZoneView != null) fieldZoneView.SetCard(_fieldCard);
+
+        // 발동 연출: 어떤 필드 카드가 깔렸는지 이미지를 잠깐 크게 보여준다(액티브 카드와 동일 흐름).
+        if (gameUI != null)
+            yield return StartCoroutine(gameUI.AnnounceCard(_fieldCard, chooser == CellState.Black));
+
         _fieldCard.OnActivated(NewFieldContext());
         Debug.Log($"[필드] 발동: {_fieldCard.cardName}");
     }

@@ -31,6 +31,11 @@ public class GameUI : MonoBehaviour
     public TMP_Text focusName;           // 카드 이름
     public TMP_Text focusDescription;    // 카드 효과 설명
 
+    [Header("카드 발동 연출(announce)")]
+    public GameObject announcePanel;     // 발동 시 잠깐 뜨는 배너(루트)
+    public Image announceImage;          // 발동한 카드 이미지(이미지만 표시)
+    public float announceSeconds = 1.2f; // 배너가 떠 있는 시간
+
     [Header("필드 카드 선택")]
     public GameObject fieldChoicePanel;      // 3장 중 1장 고르는 패널(루트)
     public Transform fieldChoiceContainer;   // Horizontal Layout Group을 단 오브젝트
@@ -89,6 +94,8 @@ public class GameUI : MonoBehaviour
             counterPromptPanel.SetActive(false);
         if (cardFocusOverlay != null)
             cardFocusOverlay.SetActive(false);   // 처음엔 숨김
+        if (announcePanel != null)
+            announcePanel.SetActive(false);
     }
 
     void OnDestroy()
@@ -160,6 +167,29 @@ public class GameUI : MonoBehaviour
     }
 
     // ── CardView가 호출하는 콜백 ──
+
+    /// <summary>
+    /// 카드 발동을 양쪽에 알리는 배너를 잠깐 띄운다(코루틴). PvP·AI 공통 관문.
+    /// GameManager가 카드 Execute 직전에 yield return 으로 기다린다.
+    /// </summary>
+    // byHuman 인자는 지금은 쓰지 않지만(이미지만 표시), 나중 확장을 위해 시그니처는 유지.
+    public System.Collections.IEnumerator AnnounceCard(CardData card, bool byHuman)
+    {
+        if (announcePanel == null || card == null)
+            yield break;
+
+        if (announceImage != null)
+            announceImage.sprite = card.artFull != null ? card.artFull : card.artIcon;
+
+        bool wasLocked = boardView != null && boardView.InputLocked;
+        if (boardView != null) boardView.InputLocked = true;   // 배너 뜨는 동안 착수 금지
+
+        announcePanel.SetActive(true);
+        yield return new WaitForSeconds(announceSeconds);
+        announcePanel.SetActive(false);
+
+        if (boardView != null) boardView.InputLocked = wasLocked;   // 원래 상태로 복원
+    }
 
     public void ShowCardFocus(CardData card)
     {

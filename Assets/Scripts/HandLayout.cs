@@ -22,6 +22,14 @@ public class HandLayout : MonoBehaviour
     public float hoverScale = 1.15f;   // 호버 시 확대 배율
 
     private CardView _hovered;
+    private CardView _dragging;   // 드래그 중인 카드는 배치에서 제외
+
+    /// <summary>CardView가 드래그 시작·종료를 알려준다.</summary>
+    public void SetDragging(CardView view, bool on)
+    {
+        _dragging = on ? view : (_dragging == view ? null : _dragging);
+        if (!on) Arrange();   // 드래그 끝나면 재정렬
+    }
 
     /// <summary>CardView가 마우스 진입·이탈을 알려준다.</summary>
     public void SetHovered(CardView view, bool on)
@@ -52,6 +60,8 @@ public class HandLayout : MonoBehaviour
             if (rt == null) continue;
 
             var view = rt.GetComponent<CardView>();
+            if (view != null && view == _dragging) continue;   // 드래그 중인 카드는 손을 따라가게 둔다
+
             // 자식 순서가 아니라 손패 인덱스를 기준으로 자리를 정한다.
             float slot = (view != null) ? view.Index : i;
             float off = slot - center;
