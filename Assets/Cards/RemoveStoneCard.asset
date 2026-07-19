@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a612c14b28f20074eb06dadc8ba5c5c0, type: 3}
   m_Name: RemoveStoneCard
   m_EditorClassIdentifier: Assembly-CSharp::RemoveStoneCardData
+  id: active_remove_stone
   cardName: "\uB3CC \uC81C\uAC70"
   description: "\uC0C1\uB300\uC758 \uB3CC \uD558\uB098\uB97C \uC81C\uAC70\uD569\uB2C8\uB2E4.(\uC774\uBBF8
     \uC5BB\uC740 \uC624\uBAA9\uC744 \uC9C0\uC6CC\uB3C4 \uC810\uC218\uB294 \uC0AC\uB77C\uC9C0\uC9C0

@@ -10,6 +10,9 @@ public enum PassiveEffect { None, ExtraStonePerTurn, ProtectOwnStones }
 /// <summary>모든 카드 정의의 베이스(ScriptableObject).</summary>
 public abstract class CardData : ScriptableObject
 {
+    [Header("식별자 (JSON 저장·조회용, 카드마다 고유)")]
+    public string id = "";   // 예: active_remove_stone (짧은 영문 키)
+
     public string cardName = "이름 없음";
     [TextArea] public string description = "";
 
@@ -18,6 +21,9 @@ public abstract class CardData : ScriptableObject
     public Sprite artIcon;
 
     public abstract CardType Type { get; }
+
+    // ID 접두어(active_/counter_/passive_/field_)는 사람이 읽기 위한 이름표일 뿐,
+    // 실제 카드 종류 판정은 항상 Type(enum)으로 한다.
 
     /// <summary>패시브 효과(들고만 있어도 적용). 패시브가 아니면 None.</summary>
     public virtual PassiveEffect Passive => PassiveEffect.None;

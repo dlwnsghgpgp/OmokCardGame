@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0aaabfe45112ac04b96a6de45462bd73, type: 3}
   m_Name: ZombieApocalypseCard
   m_EditorClassIdentifier: Assembly-CSharp::ZombieApocalypseFieldCardData
+  id: field_zombie
   cardName: "\uC880\uBE44 \uC544\uD3EC\uCE7C\uB9BD\uC2A4"
   description: "\uC880\uBE44\uAC00 \uCC3D\uAD90\uD588\uC2B5\uB2C8\uB2E4. \uB9C8\uC9C0\uB9C9\uAE4C\uC9C0
     \uB3CC\uC744 \uB0A8\uAE30\uC2ED\uC2DC\uC624."

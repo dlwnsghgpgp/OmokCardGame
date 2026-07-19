@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0c6464ef21c094447bd2fee25a273f85, type: 3}
   m_Name: RemoveAndBlockCard
   m_EditorClassIdentifier: Assembly-CSharp::RemoveAndBlockCardData
+  id: active_remove_block
   cardName: "\uCE78 \uD30C\uAD34"
   description: "\uCE78 \uD558\uB098\uB97C \uD30C\uAD34\uD569\uB2C8\uB2E4. \uADF8
     \uCE78\uC740 \uB450 \uBC88 \uB2E4\uC2DC \uB458 \uC218 \uC5C6\uACE0, \uCE78\uC5D0

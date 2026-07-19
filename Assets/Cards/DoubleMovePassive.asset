@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 84e9293db7cfdec488dc20845d2cb4ce, type: 3}
   m_Name: DoubleMovePassive
   m_EditorClassIdentifier: Assembly-CSharp::DoubleMovePassiveData
+  id: passive_double_move
   cardName: "\uC26C\uC6B4 \uB09C\uC774\uB3C4"
   description: "\uD134\uB9C8\uB2E4 \uACC4\uC18D 2\uBC88\uC529 \uB458 \uC218 \uC788\uC2B5\uB2C8\uB2E4."
   artFull: {fileID: 0}

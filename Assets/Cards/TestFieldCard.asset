@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 623753aee521aa141ac176c74a3cb1f0, type: 3}
   m_Name: TestFieldCard
   m_EditorClassIdentifier: Assembly-CSharp::TestFieldCardData
+  id: field_test
   cardName: "\uD544\uB4DC \uD14C\uC2A4\uD2B8"
   description: "\uD544\uB4DC \uD14C\uC2A4\uD2B8\uC6A9 \uCE74\uB4DC"
   artFull: {fileID: 0}

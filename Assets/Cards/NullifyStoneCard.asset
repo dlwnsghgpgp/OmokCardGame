@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8ededd1f702240e46abb00606f21bcd3, type: 3}
   m_Name: NullifyStoneCard
   m_EditorClassIdentifier: Assembly-CSharp::NullifyStoneCardData
+  id: counter_nullify
   cardName: "\uB3CC \uB450\uC9C0 \uB9C8"
   description: "\uC0C1\uB300\uAC00 \uB3CC\uC744 \uB450\uB294 \uC21C\uAC04, \uADF8
     \uB3CC\uC744 \uCDE8\uC18C\uD55C\uB2E4."
