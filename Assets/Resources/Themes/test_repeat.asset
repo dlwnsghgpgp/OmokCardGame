@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a172bc9f3da2e54cbea090b23cc75d9, type: 3}
+  m_Name: test_repeat
+  m_EditorClassIdentifier: Assembly-CSharp::ThemeData
+  id: test_repeat
+  themeName: "\uD14C\uC2A4\uD2B8 \uBC18\uBCF5"
+  description: "\uD14C\uC2A4\uD2B8 \uBC18\uBCF5"
+  icon: {fileID: 0}
+  fieldDeck:
+  - {fileID: 11400000, guid: eef8209780b9c5b488604c4aeae70223, type: 2}
+  - {fileID: 11400000, guid: eef8209780b9c5b488604c4aeae70223, type: 2}
+  - {fileID: 11400000, guid: eef8209780b9c5b488604c4aeae70223, type: 2}
+  - {fileID: 11400000, guid: eef8209780b9c5b488604c4aeae70223, type: 2}
+  - {fileID: 11400000, guid: eef8209780b9c5b488604c4aeae70223, type: 2}
+  - {fileID: 11400000, guid: eef8209780b9c5b488604c4aeae70223, type: 2}
+  choiceCount: 3
+  firstTurn: 4
+  repeating: 1
+  repeatInterval: 8

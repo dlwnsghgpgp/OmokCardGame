@@ -33,10 +33,10 @@ public class GameManager : MonoBehaviour
     public List<CardData> whiteDeckCards = new List<CardData>();   // 백(AI) 덱 구성
     public int maxHandSize = 7;
 
-    [Header("필드 카드")]
-    public List<CardData> fieldDeckCards = new List<CardData>();   // 필드 전용 덱(양쪽 공용)
-    public int fieldCardTurn = 10;      // 이 턴(양쪽 합산)에 딱 한 번 필드 카드가 나온다
-    public int fieldChoiceCount = 3;    // 제시할 후보 장수
+    [Header("필드 카드 — 테마가 없을 때 쓰는 기본값")]
+    public List<CardData> fieldDeckCards = new List<CardData>();   // 기본 필드 덱
+    public int fieldCardTurn = 10;      // 기본 등장 턴(양쪽 합산)
+    public int fieldChoiceCount = 3;    // 기본 후보 장수
 
     public event Action<int, int> ScoreChanged;
     public event Action<CellState> TurnChanged;
@@ -62,6 +62,7 @@ public class GameManager : MonoBehaviour
     private Graveyard _graveyard = new Graveyard();
 
     private Deck _fieldDeck;
+    private ThemeData _theme;           // 선택된 테마(없으면 Inspector 기본값 사용)
     private FieldCardData _fieldCard;   // 필드에 깔린 카드(없으면 null)
     private int _turnCount;             // 양쪽 합산 턴 수
     private string _pendingResult;      // 필드 카드가 정한 종료 결과(있으면 이걸 사용)
@@ -121,8 +122,28 @@ public class GameManager : MonoBehaviour
         _graveyard.Clear();
         GraveyardChanged?.Invoke(_graveyard.Count);
 
-        _fieldDeck = new Deck(fieldDeckCards);
+        // 테마가 선택돼 있으면 그 필드 덱만 쓴다(폴백으로 새지 않음).
+        // 테마가 전혀 없을 때에만 Inspector의 개발용 기본값을 쓴다.
+        _theme = GameSession.Instance.SelectedTheme;
+        List<CardData> fieldSource;
+        if (_theme != null)
+        {
+            fieldSource = _theme.fieldDeck;
+            if (fieldSource == null || fieldSource.Count == 0)
+                Debug.LogWarning($"[테마] '{_theme.themeName}'의 Field Deck이 비어 있습니다. " +
+                                 $"이 게임에는 필드 카드가 등장하지 않습니다.");
+        }
+        else
+        {
+            fieldSource = fieldDeckCards;
+            Debug.Log("[테마] 선택된 테마가 없어 GameManager의 기본 필드 덱을 사용합니다.");
+        }
+
+        _fieldDeck = new Deck(fieldSource);
         _fieldDeck.Shuffle();
+        if (_theme != null)
+            Debug.Log($"[테마] {_theme.themeName} — 필드 {_fieldDeck.Count}장, " +
+                      $"{_theme.firstTurn}턴{(_theme.repeating ? $"부터 {_theme.repeatInterval}턴마다" : "에 한 번")}");
         _fieldCard = null;
         _turnCount = 0;
         _pendingResult = null;
@@ -215,8 +236,8 @@ public class GameManager : MonoBehaviour
 
         _turnCount++;
 
-        // 정해진 턴에 딱 한 번, 필드 카드 후보를 제시하고 점수가 낮은 쪽이 고른다.
-        if (_turnCount == fieldCardTurn && _fieldCard == null && _fieldDeck.Count > 0)
+        // 필드 카드 등장 판정. 테마가 있으면 테마 규칙(등장 턴·반복)을 따른다.
+        if (_fieldDeck.Count > 0 && ShouldOfferField(_turnCount))
             yield return StartCoroutine(OfferFieldCard());
 
         // 필드 카드의 매 턴 효과(예: 감염 확산)
@@ -486,12 +507,21 @@ public class GameManager : MonoBehaviour
         else gameUI.HideCardFocus();
     }
 
+    // 이 턴에 필드 카드를 제시해야 하는가.
+    private bool ShouldOfferField(int turn)
+    {
+        if (_theme != null) return _theme.ShouldTrigger(turn);
+        // 테마가 없으면 기본값: 정해진 턴에 딱 한 번.
+        return turn == fieldCardTurn && _fieldCard == null;
+    }
+
     /// <summary>필드 덱에서 후보를 뽑아, 점수가 낮은 플레이어가 1장을 고르게 한다.</summary>
     private IEnumerator OfferFieldCard()
     {
         // 후보 뽑기
         var candidates = new List<CardData>();
-        for (int i = 0; i < fieldChoiceCount; i++)
+        int choiceCount = (_theme != null) ? _theme.choiceCount : fieldChoiceCount;
+        for (int i = 0; i < choiceCount; i++)
         {
             var c = _fieldDeck.Draw();
             if (c == null) break;
@@ -526,12 +556,20 @@ public class GameManager : MonoBehaviour
         for (int i = 0; i < candidates.Count; i++)
             if (i != picked) _fieldDeck.AddBottom(candidates[i]);
 
-        _fieldCard = candidates[picked] as FieldCardData;
-        if (_fieldCard == null)
+        var newCard = candidates[picked] as FieldCardData;
+        if (newCard == null)
         {
             Debug.LogWarning("[필드] 필드 덱에 필드 카드가 아닌 카드가 들어 있습니다.");
             yield break;
         }
+
+        // 교체: 이전 필드 카드는 내려가며 정리 훅을 받고, 그대로 사라진다(묘지로 가지 않음).
+        if (_fieldCard != null)
+        {
+            _fieldCard.OnRemoved(NewFieldContext());
+            Debug.Log($"[필드] {_fieldCard.cardName} → {newCard.cardName} 로 교체");
+        }
+        _fieldCard = newCard;
 
         if (fieldZoneView != null) fieldZoneView.SetCard(_fieldCard);
 

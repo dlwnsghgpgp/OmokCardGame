@@ -2,12 +2,13 @@ using System.Collections;
 
 /// <summary>
 /// 필드 카드의 베이스. 주인이 없고 양쪽 플레이어 모두에게 영향을 준다.
-/// 손패에 들어오지 않고, 정해진 턴에 필드 덱에서 뽑혀 필드에 깔린다.
+/// 손패에 들어오지 않고, 테마가 정한 규칙에 따라 필드 덱에서 뽑혀 필드에 깔린다.
 ///
-/// 훅 3종:
+/// 훅 4종:
 ///  - OnActivated: 필드에 깔리는 순간 1회(초기 설정. 예: 좀비 숙주 지정)
 ///  - OnTurnBegin: 매 턴 시작마다(지속 효과. 예: 감염 확산)
-///  - CheckWin: 승리 조건을 덮어쓴다(예: 한쪽 돌 전멸 시 패배)
+///  - OnRemoved:   다른 필드 카드로 교체되어 내려갈 때 1회(반복 테마에서만 발생)
+///  - CheckWin:    승리 조건을 덮어쓴다(예: 한쪽 돌 전멸 시 패배)
 /// </summary>
 public abstract class FieldCardData : CardData
 {
@@ -22,6 +23,12 @@ public abstract class FieldCardData : CardData
 
     /// <summary>매 턴 시작 시 호출(지속 효과).</summary>
     public virtual void OnTurnBegin(FieldContext ctx) { }
+
+    /// <summary>
+    /// 다른 필드 카드로 교체되어 필드에서 내려갈 때 1회 호출.
+    /// 남긴 흔적(감염 상태 등)을 되돌릴지 그대로 둘지는 카드가 정한다.
+    /// </summary>
+    public virtual void OnRemoved(FieldContext ctx) { }
 
     /// <summary>
     /// 이 필드 카드가 정하는 승패. true를 반환하면 게임이 끝나고 result가 결과 문구가 된다.

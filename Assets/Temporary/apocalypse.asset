@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a172bc9f3da2e54cbea090b23cc75d9, type: 3}
+  m_Name: apocalypse
+  m_EditorClassIdentifier: Assembly-CSharp::ThemeData
+  id: apocalypse
+  themeName: "\uC138\uACC4 \uBA78\uB9DD"
+  description: "20XX\uB144 \uC778\uB958\uB294 \uBA78\uB9DD\uD558\uAE30 \uC2DC\uC791\uD588\uC2B5\uB2C8\uB2E4.
+    \uB300\uCCB4 \uADF8\uB4E4\uC5D0\uAC8C \uC5B4\uB5A4 \uC77C\uC774 \uC788\uC5C8\uB358
+    \uAC78\uAE4C\uC694?"
+  icon: {fileID: 0}
+  fieldDeck:
+  - {fileID: 11400000, guid: d8fbd2e63ea04a24c86706c03fdda3ee, type: 2}
+  - {fileID: 11400000, guid: d8fbd2e63ea04a24c86706c03fdda3ee, type: 2}
+  - {fileID: 11400000, guid: eef8209780b9c5b488604c4aeae70223, type: 2}
+  choiceCount: 3
+  firstTurn: 10
+  repeating: 0
+  repeatInterval: 1
