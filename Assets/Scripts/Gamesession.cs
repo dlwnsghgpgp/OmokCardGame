@@ -52,6 +52,9 @@ public class GameSession : MonoBehaviour
     /// </summary>
     public string SelectedThemeId { get; set; }
 
+    /// <summary>플레이어 저장 데이터(소지 카드·덱 목록). Init에서 JSON에서 불러온다.</summary>
+    public PlayerSaveData SaveData { get; private set; }
+
     /// <summary>선택된 덱(카드 ID 목록). 비어 있으면 게임 씬이 기본 덱으로 시작한다.</summary>
     public List<string> SelectedDeckIds { get; private set; } = new List<string>();
 
@@ -63,6 +66,26 @@ public class GameSession : MonoBehaviour
         SelectedDeckIds = new List<string>();
         if (cardIds != null) SelectedDeckIds.AddRange(cardIds);
     }
+
+    /// <summary>저장 데이터에서 선택된 덱을 현재 덱으로 반영한다.</summary>
+    public void ApplySelectedDeckFromSave()
+    {
+        var deck = SaveData?.GetSelectedDeck();
+        SetDeck(deck?.cardIds);
+        if (deck != null)
+            Debug.Log($"[GameSession] 덱 '{deck.deckName}' 적용 ({deck.cardIds.Count}장)");
+    }
+
+    /// <summary>현재 저장 데이터를 파일에 기록한다(덱 편집 후 호출).</summary>
+    public void SaveToDisk()
+    {
+        if (SaveData == null) return;
+        SaveData.lastThemeId = SelectedThemeId;
+        SaveSystem.Save(SaveData);
+    }
+
+    /// <summary>그 카드를 소지하고 있는가(덱 편집에서 사용).</summary>
+    public bool OwnsCard(string cardId) => SaveData != null && SaveData.Owns(cardId);
 
     private bool _initialized;
 
@@ -92,6 +115,10 @@ public class GameSession : MonoBehaviour
                 Debug.LogWarning("[GameSession] CardDatabase가 없습니다. " +
                                  "Resources 폴더에 두거나 씬의 GameSession에 연결하세요.");
         }
+
+        // 저장 데이터(소지 카드·덱)를 불러온다. 파일이 없으면 전부 소지로 새로 만든다.
+        SaveData = SaveSystem.Load(cardDatabase);
+        ApplySelectedDeckFromSave();
 
         // 테마도 비어 있으면 Resources/Themes 폴더에서 전부 불러온다.
         if (themes == null || themes.Count == 0)
