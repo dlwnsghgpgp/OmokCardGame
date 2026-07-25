@@ -484,7 +484,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7d3cc05fd5325f6418161ae68242a3c6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SaveSystemTester
-  resetOnStart: 0
+  resetOnStart: 1
 --- !u!4 &181358086
 Transform:
   m_ObjectHideFlags: 0
@@ -2433,6 +2433,54 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!1 &1016852605
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1016852607}
+  - component: {fileID: 1016852606}
+  m_Layer: 0
+  m_Name: GameSession
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1016852606
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1016852605}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 131a588fa9ab16e46982a995c55e1daf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameSession
+  cardDatabase: {fileID: 11400000, guid: dd0a33f0d8861344abd87b3e82d8800a, type: 2}
+  themes:
+  - {fileID: 11400000, guid: d84c1af5631577c42a14cf7c1779f15e, type: 2}
+  - {fileID: 11400000, guid: 1d55a5ba236471c46bbd2b9316c51ffb, type: 2}
+--- !u!4 &1016852607
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1016852605}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 629.4834, y: 318.13297, z: -169.407}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1098104158
 GameObject:
   m_ObjectHideFlags: 0
@@ -3171,9 +3219,13 @@ MonoBehaviour:
   - {fileID: 11400000, guid: fe29e1a72e624f34dac900b6018403ce, type: 2}
   - {fileID: 11400000, guid: a77e9b79b85c8c544b6126fbc3ba5ba2, type: 2}
   - {fileID: 11400000, guid: a77e9b79b85c8c544b6126fbc3ba5ba2, type: 2}
+  - {fileID: 11400000, guid: a77e9b79b85c8c544b6126fbc3ba5ba2, type: 2}
+  - {fileID: 11400000, guid: a77e9b79b85c8c544b6126fbc3ba5ba2, type: 2}
   whiteDeckCards:
   - {fileID: 11400000, guid: b933e8c013204d24fa8e147c6e5a68ef, type: 2}
   - {fileID: 11400000, guid: 77ffeb5360412244391d95044fdd9e2f, type: 2}
+  - {fileID: 11400000, guid: fdce05a422133ff449249804d1bbec9c, type: 2}
+  - {fileID: 11400000, guid: fdce05a422133ff449249804d1bbec9c, type: 2}
   - {fileID: 11400000, guid: fdce05a422133ff449249804d1bbec9c, type: 2}
   maxHandSize: 3
   fieldDeckCards: []
@@ -5029,3 +5081,4 @@ SceneRoots:
   - {fileID: 280490277}
   - {fileID: 656613872}
   - {fileID: 181358086}
+  - {fileID: 1016852607}

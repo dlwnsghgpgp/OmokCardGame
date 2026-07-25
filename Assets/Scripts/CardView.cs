@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -9,6 +10,8 @@ public enum CardViewMode
     Hand,        // 손패 — 위로 드래그하면 카드 사용
     Display,     // 열람 전용(묘지 목록) — 호버 포커스만
     FieldChoice, // 필드 카드 선택 — 클릭하면 그 카드를 선택
+    DeckPool,    // 덱 편집: 소지 카드 풀 — 클릭하면 덱에 추가
+    DeckMember,  // 덱 편집: 현재 덱의 카드 — 클릭하면 덱에서 제거
 }
 
 /// <summary>
@@ -32,6 +35,7 @@ public class CardView : MonoBehaviour,
     private GameUI _owner;
     private CardViewMode _mode;
     private HandLayout _layout;
+    private Action<CardData> _onClick;   // 덱 편집 등에서 GameUI 없이 직접 받는 클릭 콜백
 
     private RectTransform _rt;
     private Canvas _canvas;
@@ -53,7 +57,26 @@ public class CardView : MonoBehaviour,
         _index = index;
         _owner = owner;
         _mode = mode;
+        _onClick = null;
         _layout = (mode == CardViewMode.Hand) ? GetComponentInParent<HandLayout>() : null;
+
+        if (iconImage != null)
+        {
+            Sprite icon = card.artIcon != null ? card.artIcon : card.artFull;
+            iconImage.sprite = icon;
+        }
+        if (nameLabel != null) nameLabel.text = card.cardName;
+    }
+
+    /// <summary>GameUI 없이(덱 편집 등) 카드 데이터와 클릭 콜백만으로 설정한다.</summary>
+    public void SetupSimple(CardData card, GameUI focusOwner, CardViewMode mode, Action<CardData> onClick)
+    {
+        _card = card;
+        _index = -1;
+        _owner = focusOwner;   // 호버 포커스는 GameUI가 있으면 그걸 통해, 없으면 생략
+        _mode = mode;
+        _onClick = onClick;
+        _layout = null;
 
         if (iconImage != null)
         {
@@ -81,9 +104,16 @@ public class CardView : MonoBehaviour,
     // ── 클릭 (필드 선택 전용) ──
     public void OnPointerClick(PointerEventData e)
     {
+        // 덱 편집 등 직접 콜백이 있으면 그걸 부른다.
+        if (_onClick != null)
+        {
+            _onClick(_card);
+            return;
+        }
+        // 필드 선택은 GameUI를 통해.
         if (_mode == CardViewMode.FieldChoice)
             _owner?.OnCardViewClicked(_index, _mode);
-        // 손패는 클릭이 아니라 드래그로 발동한다. 묘지는 아무 동작 없음.
+        // 손패는 드래그로 발동한다. 묘지(Display)는 아무 동작 없음.
     }
 
     // ── 드래그 (손패 전용) ──
